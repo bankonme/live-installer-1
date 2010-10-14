@@ -1,0 +1,164 @@
+live-installer (2010.09.05.4) debian; urgency=medium
+
+  * Fixed use-case with /boot partition (grub check failing)
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  05 Sep 2010 17:03:00 +0000
+
+live-installer (2010.09.05.3) debian; urgency=medium
+
+  * Fixed mount problems when using multiple partitions
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  05 Sep 2010 13:29:00 +0000
+
+live-installer (2010.09.05.1) debian; urgency=medium
+
+  * Fixed exception when HDD is blank without a partition table
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  05 Sep 2010 11:51:00 +0000
+
+live-installer (2010.09.05) debian; urgency=medium
+
+  * Replaced commands call with os.system in APT cleaning step
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  05 Sep 2010 10:24:00 +0000
+
+live-installer (2010.09.02.10) debian; urgency=medium
+
+  * Filename error fixed
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  02 Sep 2010 18:18:00 +0000
+
+live-installer (2010.09.02.3) debian; urgency=medium
+
+  * Fixed code error
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  02 Sep 2010 17:59:00 +0000
+
+live-installer (2010.09.02.2) debian; urgency=medium
+
+  * Added 2 sec sleep before grub checks
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  02 Sep 2010 17:14:00 +0000
+ 
+ live-installer (2010.09.02.1) debian; urgency=medium
+
+  * Retry mechanism for grub-mkconfig
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  02 Sep 2010 17:14:00 +0000
+
+live-installer (2010.09.02) debian; urgency=medium
+
+  * Fixed redraw problem in installer's partition screen
+  * Improved usability with format/assign_partition dialog
+  * Shade added to scroll area for timezones
+  * Added Edit menu item in context menu in partitions table
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  02 Sep 2010 15:30:00 +0000
+
+live-installer (2010.08.31) debian; urgency=medium
+
+  * Fixed useradd with space chars in name 
+
+ -- Clement Lefebvre <root@linuxmint.com>  Tue,  31 Aug 2010 16:24:00 +0000
+
+live-installer (2010.08.29.1) debian; urgency=medium
+
+  * Better tracing  
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  28 Aug 2010 12:31:00 +0000
+
+live-installer (2010.08.29) debian; urgency=medium
+
+  * Better tracing  
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  28 Aug 2010 10:54:00 +0000
+ 
+ live-installer (2010.08.21) debian; urgency=medium
+
+  * slideshow improvements
+  * detects keyboard layout based on selected locale
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  21 Aug 2010 12:12:00 +0000
+
+live-installer (2010.08.20.2) debian; urgency=medium
+
+  * Generic detection for l10n (FF and thunderbird)
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sat,  20 Aug 2010 18:04:00 +0000
+ 
+live-installer (2010.08.20.1) debian; urgency=medium
+
+  * locale and keyboard layout fixes
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sat,  20 Aug 2010 16:41:00 +0000
+
+live-installer (2010.08.20) debian; urgency=medium
+
+  * Slideshow moved
+  * No more forks
+  * /etc/resolv.conf in chroot
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sat,  20 Aug 2010 11:18:00 +0000
+
+live-installer (2010.08.19) debian; urgency=medium
+
+  * Slideshow
+  * UI improvements
+  * Localize Thunderbird and Firefox
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  19 Aug 2010 15:15:00 +0000
+
+live-installer (2010.07.30.1) debian; urgency=medium
+
+  * Timezone fix
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  30 Jul 2010 18:23:00 +0000
+
+live-installer (2010.07.30) debian; urgency=medium
+
+  * New version
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  30 Jul 2010 17:02:00 +0000
+
+live-installer (1.0.5) debian; urgency=medium
+
+  * Bug fix in update-locale
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  30 Jun 2010 21:23:00 +0000
+
+live-installer (1.0.4) debian; urgency=medium
+
+  * Apply locale in chroot
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  30 Jun 2010 21:23:00 +0000
+
+live-installer (1.0.3) debian; urgency=medium
+
+  * Use country for flags
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed,  30 Jun 2010 20:34:00 +0000
+
+live-installer (1.0.2) debian; urgency=medium
+
+  * Bug fixes
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed,  30 Jun 2010 20:34:00 +0000
+
+live-installer (1.0.1) debian; urgency=medium
+
+  * Renaming
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed,  30 Jun 2010 14:02:00 +0000
+
+live-installer (1.0.1) debian; urgency=medium
+
+  * Bug fix regarding grub installation
+
+ -- Ikey Doherty <contactjfreak@gmail.com>  Fri,  25 Jun 2010 23:25:00 +0000
+
+live-installer (1.0.0) debian; urgency=low
+
+  * Initial release
+
+ -- Ikey Doherty <contactjfreak@gmail.com>  Wed,  16 Jun 2010 12:19:00 +0000
+
