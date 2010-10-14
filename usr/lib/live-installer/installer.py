@@ -295,7 +295,7 @@ class InstallerEngine:
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Adding user to system"))
             user = self.get_main_user()
-            self.run_in_chroot("useradd -s %s -c \'%s\' -G sudo -m %s" % ("/bin/bash", user.realname, user.username))
+            self.run_in_chroot("useradd -s %s -c \'%s\' -G sudo,cdrom,floppy,audio,dip,video,plugdev,netdev,powerdev -m %s" % ("/bin/bash", user.realname, user.username))
             newusers = open("/target/tmp/newusers.conf", "w")
             newusers.write("%s:%s\n" % (user.username, user.password))
             newusers.write("root:%s\n" % user.password)
@@ -342,16 +342,17 @@ class InstallerEngine:
             hostsfh.close()
 
             # gdm overwrite (specific to Debian/live-initramfs)
-            print " --> Configuring GDM"
-            gdmconffh = open("/target/etc/gdm3/daemon.conf", "w")
-            gdmconffh.write("# GDM configuration storage\n")
-            gdmconffh.write("\n[daemon]\n")
-            gdmconffh.write("\n[security]\n")
-            gdmconffh.write("\n[xdmcp]\n")
-            gdmconffh.write("\n[greeter]\n")
-            gdmconffh.write("\n[chooser]\n")
-            gdmconffh.write("\n[debug]\n")
-            gdmconffh.close()
+            # skip GDM config since we're using Slim
+            #print " --> Configuring GDM"
+            #gdmconffh = open("/target/etc/gdm3/daemon.conf", "w")
+            #gdmconffh.write("# GDM configuration storage\n")
+            #gdmconffh.write("\n[daemon]\n")
+            #gdmconffh.write("\n[security]\n")
+            #gdmconffh.write("\n[xdmcp]\n")
+            #gdmconffh.write("\n[greeter]\n")
+            #gdmconffh.write("\n[chooser]\n")
+            #gdmconffh.write("\n[debug]\n")
+            #gdmconffh.close()
 
             # set the locale
             print " --> Setting the locale"
@@ -369,33 +370,34 @@ class InstallerEngine:
             os.system("cp /target/usr/share/zoneinfo/%s /target/etc/localtime" % self.timezone)
             
             # localize Firefox and Thunderbird
-            print " --> Localizing Firefox and Thunderbird"
-            self.update_progress(total=our_total, current=our_current, message=_("Localizing Firefox and Thunderbird"))
-            if self.locale != "en_US":
-                import commands
-                os.system("apt-get update")
-                self.run_in_chroot("apt-get update")
-                locale = self.locale.replace("_", "-")                
-                               
-                num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (locale, locale))
-                if num_res != "0":                    
-                    self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + locale)
-                else:
-                    if "_" in self.locale:
-                        language_code = self.locale.split("_")[0]
-                        num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (language_code, language_code))
-                        if num_res != "0":                            
-                            self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + language_code)
-               
-                num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (locale, locale))
-                if num_res != "0":
-                    self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + locale)
-                else:
-                    if "_" in self.locale:
-                        language_code = self.locale.split("_")[0]
-                        num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (language_code, language_code))
-                        if num_res != "0":
-                            self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + language_code)                                                                                        
+            # we do not need that
+            #print " --> Localizing Firefox and Thunderbird"
+            #self.update_progress(total=our_total, current=our_current, message=_("Localizing Firefox and Thunderbird"))
+            #if self.locale != "en_US":
+            #    import commands
+            #    os.system("apt-get update")
+            #    self.run_in_chroot("apt-get update")
+            #    locale = self.locale.replace("_", "-")                
+            #                   
+            #    num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (locale, locale))
+            #    if num_res != "0":                    
+            #        self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + locale)
+            #    else:
+            #        if "_" in self.locale:
+            #            language_code = self.locale.split("_")[0]
+            #            num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (language_code, language_code))
+            #            if num_res != "0":                            
+            #                self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + language_code)
+            #   
+            #    num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (locale, locale))
+            #    if num_res != "0":
+            #        self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + locale)
+            #    else:
+            #        if "_" in self.locale:
+            #            language_code = self.locale.split("_")[0]
+            #            num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (language_code, language_code))
+            #            if num_res != "0":
+            #                self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + language_code)                                                                                        
 
             # set the keyboard options..
             print " --> Setting the keyboard"
@@ -496,10 +498,10 @@ class InstallerEngine:
             grubfh = open("/target/boot/grub/grub.cfg", "r")
             for line in grubfh:
                 line = line.rstrip("\r\n")
-                if("linuxmint.png" in line):
+                if("moreblue-orbit-grub.png" in line):
                     found_theme = True
                     print " --> Found Grub theme: %s " % line
-                if ("menuentry" in line and "Mint" in line):
+                if ("menuentry" in line and "Debian" in line):
                     found_entry = True
                     print " --> Found Grub entry: %s " % line
             grubfh.close()

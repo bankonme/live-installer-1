@@ -1,3 +1,9 @@
+live-installer (2010.10.14.2) UNRELEASED; urgency=low
+
+  * Kazsid 0.4a.
+
+ -- Timur Birsh <taem@linukz.org>  Thu, 14 Oct 2010 23:37:25 +0600
+
 live-installer (2010.09.05.4) debian; urgency=medium
 
   * Fixed use-case with /boot partition (grub check failing)
