@@ -1,3 +1,11 @@
+live-installer (2010.10.19~kazsid0) UNRELEASED; urgency=low
+
+  * Replace Mint logo with Debian swirl
+  * usr/share/menu/live-installer: update menu item title
+  * Remove live-boot live-boot-initramfs-tools live-config live-config-sysvinit packages
+
+ -- Timur Birsh <taem@linukz.org>  Tue, 19 Oct 2010 21:54:27 +0600
+
 live-installer (2010.10.14.2) UNRELEASED; urgency=low
 
   * Kazsid 0.4a.
