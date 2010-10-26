@@ -274,16 +274,6 @@ class InstallerEngine:
             os.system("mount --bind /proc/ /target/proc/")
             os.system("cp -f /etc/resolv.conf /target/etc/resolv.conf")
                                           
-            # remove live user
-            print " --> Removing live user"
-            live_user = self.live_user
-            our_current += 1
-            self.update_progress(total=our_total, current=our_current, message=_("Removing live configuration (user)"))
-            self.run_in_chroot("deluser %s" % live_user)
-            # can happen
-            if(os.path.exists("/target/home/%s" % live_user)):
-                self.run_in_chroot("rm -rf /home/%s" % live_user)
-            
             # remove live-initramfs (or w/e)
             print " --> Removing live-initramfs"
             our_current += 1
