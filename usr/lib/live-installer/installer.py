@@ -274,24 +274,20 @@ class InstallerEngine:
             os.system("mount --bind /proc/ /target/proc/")
             os.system("cp -f /etc/resolv.conf /target/etc/resolv.conf")
                                           
-            # remove live-initramfs (or w/e)
-            print " --> Removing live-initramfs"
+            # set the locale
+            print " --> Setting the locale"
             our_current += 1
-            self.update_progress(total=our_total, current=our_current, message=_("Removing live configuration (packages)"))
-            self.run_in_chroot("apt-get remove --purge --yes --force-yes live-initramfs live-installer live-boot live-boot-initramfs-tools live-config live-config-sysvinit")
-            
-            # add new user
-            print " --> Adding new user"
-            our_current += 1
-            self.update_progress(total=our_total, current=our_current, message=_("Adding user to system"))
-            user = self.get_main_user()
-            self.run_in_chroot("useradd -s %s -c \'%s\' -G sudo,cdrom,floppy,audio,dip,video,plugdev,netdev,powerdev -m %s" % ("/bin/bash", user.realname, user.username))
-            newusers = open("/target/tmp/newusers.conf", "w")
-            newusers.write("%s:%s\n" % (user.username, user.password))
-            newusers.write("root:%s\n" % user.password)
-            newusers.close()
-            self.run_in_chroot("cat /tmp/newusers.conf | chpasswd")
-            self.run_in_chroot("rm -rf /tmp/newusers.conf")
+            self.update_progress(total=our_total, current=our_current, message=_("Setting locale"))
+            os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % self.locale)
+            self.run_in_chroot("locale-gen")
+            os.system("echo \"\" > /target/etc/default/locale")
+            self.run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % self.locale)
+            self.run_in_chroot("update-locale LANG=%s.UTF-8" % self.locale)
+
+            # set the timezone
+            print " --> Setting the timezone"
+            os.system("echo \"%s\" > /target/etc/timezone" % self.timezone_code)
+            os.system("cp /target/usr/share/zoneinfo/%s /target/etc/localtime" % self.timezone)
             
             # write the /etc/fstab
             print " --> Writing fstab"
@@ -344,21 +340,6 @@ class InstallerEngine:
             #gdmconffh.write("\n[debug]\n")
             #gdmconffh.close()
 
-            # set the locale
-            print " --> Setting the locale"
-            our_current += 1
-            self.update_progress(total=our_total, current=our_current, message=_("Setting locale"))
-            os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % self.locale)
-            self.run_in_chroot("locale-gen")
-            os.system("echo \"\" > /target/etc/default/locale")
-            self.run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % self.locale)
-            self.run_in_chroot("update-locale LANG=%s.UTF-8" % self.locale)
-
-            # set the timezone
-            print " --> Setting the timezone"
-            os.system("echo \"%s\" > /target/etc/timezone" % self.timezone_code)
-            os.system("cp /target/usr/share/zoneinfo/%s /target/etc/localtime" % self.timezone)
-            
             # localize Firefox and Thunderbird
             # we do not need that
             #print " --> Localizing Firefox and Thunderbird"
@@ -423,6 +404,19 @@ class InstallerEngine:
             self.run_in_chroot("rm /etc/default/keyboard")
             self.run_in_chroot("mv /etc/default/keyboard.new /etc/default/keyboard")
 
+            # add new user
+            print " --> Adding new user"
+            our_current += 1
+            self.update_progress(total=our_total, current=our_current, message=_("Adding user to system"))
+            user = self.get_main_user()
+            self.run_in_chroot("useradd -s %s -c \'%s\' -G sudo,cdrom,floppy,audio,dip,video,plugdev,netdev,powerdev -m %s" % ("/bin/bash", user.realname, user.username))
+            newusers = open("/target/tmp/newusers.conf", "w")
+            newusers.write("%s:%s\n" % (user.username, user.password))
+            newusers.write("root:%s\n" % user.password)
+            newusers.close()
+            self.run_in_chroot("cat /tmp/newusers.conf | chpasswd")
+            self.run_in_chroot("rm -rf /tmp/newusers.conf")
+            
             # write MBR (grub)
             print " --> Configuring Grub"
             our_current += 1
@@ -440,6 +434,13 @@ class InstallerEngine:
                         break
                         
             # write MBR (grub)
+
+            # remove live-initramfs (or w/e)
+            print " --> Removing live-initramfs"
+            our_current += 1
+            self.update_progress(total=our_total, current=our_current, message=_("Removing live configuration (packages)"))
+            self.run_in_chroot("apt-get remove --purge --yes --force-yes live-initramfs live-installer live-boot live-boot-initramfs-tools live-config live-config-sysvinit")
+            
             print " --> Cleaning APT"
             our_current += 1
             self.update_progress(pulse=True, total=our_total, current=our_current, message=_("Cleaning APT"))
