@@ -377,6 +377,11 @@ class InstallerEngine:
             RESOLVCONF = "/etc/resolv.conf"
             print " --> Checking %s" % RESOLVCONF
             self.run_in_chroot("ln -s -f /etc/resolvconf/run/resolv.conf %s" % RESOLVCONF)
+
+            # FIXME: generate /etc/network/interfaces (just copy it from live system)
+            INTERFACES = "etc/network/interfaces"
+            print " --> Preparing /%s" % INTERFACES
+            self.run_in_chroot("cp -p %s /target/%s" % (INTERFACES, INTERFACES))
             
             # write MBR (grub)
             print " --> Configuring Grub"
