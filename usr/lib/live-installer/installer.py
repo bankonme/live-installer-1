@@ -327,49 +327,6 @@ class InstallerEngine:
             hostsfh.write("ff02::3 ip6-allhosts\n")
             hostsfh.close()
 
-            # gdm overwrite (specific to Debian/live-initramfs)
-            # skip GDM config since we're using Slim
-            #print " --> Configuring GDM"
-            #gdmconffh = open("/target/etc/gdm3/daemon.conf", "w")
-            #gdmconffh.write("# GDM configuration storage\n")
-            #gdmconffh.write("\n[daemon]\n")
-            #gdmconffh.write("\n[security]\n")
-            #gdmconffh.write("\n[xdmcp]\n")
-            #gdmconffh.write("\n[greeter]\n")
-            #gdmconffh.write("\n[chooser]\n")
-            #gdmconffh.write("\n[debug]\n")
-            #gdmconffh.close()
-
-            # localize Firefox and Thunderbird
-            # we do not need that
-            #print " --> Localizing Firefox and Thunderbird"
-            #self.update_progress(total=our_total, current=our_current, message=_("Localizing Firefox and Thunderbird"))
-            #if self.locale != "en_US":
-            #    import commands
-            #    os.system("apt-get update")
-            #    self.run_in_chroot("apt-get update")
-            #    locale = self.locale.replace("_", "-")                
-            #                   
-            #    num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (locale, locale))
-            #    if num_res != "0":                    
-            #        self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + locale)
-            #    else:
-            #        if "_" in self.locale:
-            #            language_code = self.locale.split("_")[0]
-            #            num_res = commands.getoutput("aptitude search firefox-l10n-%s | grep firefox-l10n-%s | wc -l" % (language_code, language_code))
-            #            if num_res != "0":                            
-            #                self.run_in_chroot("apt-get install --yes --force-yes firefox-l10n-" + language_code)
-            #   
-            #    num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (locale, locale))
-            #    if num_res != "0":
-            #        self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + locale)
-            #    else:
-            #        if "_" in self.locale:
-            #            language_code = self.locale.split("_")[0]
-            #            num_res = commands.getoutput("aptitude search thunderbird-l10n-%s | grep thunderbird-l10n-%s | wc -l" % (language_code, language_code))
-            #            if num_res != "0":
-            #                self.run_in_chroot("apt-get install --yes --force-yes thunderbird-l10n-" + language_code)                                                                                        
-
             # set the keyboard options..
             print " --> Setting the keyboard"
             our_current += 1
