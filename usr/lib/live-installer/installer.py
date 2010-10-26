@@ -440,6 +440,8 @@ class InstallerEngine:
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Removing live configuration (packages)"))
             self.run_in_chroot("apt-get remove --purge --yes --force-yes live-initramfs live-installer live-boot live-boot-initramfs-tools live-config live-config-sysvinit")
+            # FIXME: live-installer - add postrm script to properly remove init symlinks
+            self.run_in_chroot("update-rc.d live-installer remove")
             
             print " --> Cleaning APT"
             our_current += 1
