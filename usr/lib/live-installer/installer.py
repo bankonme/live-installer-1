@@ -272,7 +272,6 @@ class InstallerEngine:
             os.system("mount --bind /dev/pts /target/dev/pts")
             os.system("mount --bind /sys/ /target/sys/")
             os.system("mount --bind /proc/ /target/proc/")
-            os.system("cp -f /etc/resolv.conf /target/etc/resolv.conf")
                                           
             # set the locale
             print " --> Setting the locale"
@@ -412,7 +411,6 @@ class InstallerEngine:
             os.system("umount --force /target/dev/")
             os.system("umount --force /target/sys/")
             os.system("umount --force /target/proc/")
-            os.system("rm -rf /target/etc/resolv.conf")
             for item in self.fstab.get_entries():
                 if(item.mountpoint != "/"):
                     self.do_unmount("/target" + item.mountpoint)
