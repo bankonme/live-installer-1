@@ -372,6 +372,11 @@ class InstallerEngine:
             newusers.close()
             self.run_in_chroot("cat /tmp/newusers.conf | chpasswd")
             self.run_in_chroot("rm -rf /tmp/newusers.conf")
+
+            # FIXME: make sure /etc/resolv.conf is a symlink
+            RESOLVCONF = "/etc/resolv.conf"
+            print " --> Checking %s" % RESOLVCONF
+            self.run_in_chroot("ln -s -f /etc/resolvconf/run/resolv.conf %s" % RESOLVCONF)
             
             # write MBR (grub)
             print " --> Configuring Grub"
