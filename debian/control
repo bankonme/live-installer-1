@@ -1,9 +1,12 @@
 Source: live-installer
 Section: admin
 Priority: optional
-Maintainer: Clement Lefebvre <root@linuxmint.com>
+Maintainer: Timur Birsh <taem@linukz.org>
 Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Standards-Version: 3.9.1
+Homepage: http://github.com/taem/live-installer
+Vcs-Git: git://github.com/taem/live-installer.git
+Vcs-Browser: http://github.com/taem/live-installer/tree/master
 
 Package: live-installer
 Architecture: all
