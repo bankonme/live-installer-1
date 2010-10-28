@@ -1,3 +1,15 @@
+live-installer (2010.10.26~kazsid0) unstable; urgency=low
+
+  * Remove 'remove live user' - live image doesn't contain him.
+  * Rearrange some code's logical blocks
+  * Clean up live-installer package init symlinks
+  * Remove commented code: gdm and mozilla
+  * Don't touch resolv.conf
+  * Make sure /etc/resolv.conf is a symlink
+  * Generate /etc/network/interfaces (just copy it from live system)
+
+ -- Timur Birsh <taem@linukz.org>  Tue, 26 Oct 2010 22:35:05 +0600
+
 live-installer (2010.10.19~kazsid0) UNRELEASED; urgency=low
 
   * Replace Mint logo with Debian swirl
