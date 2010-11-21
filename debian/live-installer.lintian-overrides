@@ -1,0 +1,4 @@
+live-installer: binary-without-manpage usr/bin/live-installer
+live-installer: binary-without-manpage usr/bin/live-installer-dm
+live-installer: desktop-command-not-in-package /usr/share/applications/live-installer-launcher.desktop gksudo
+live-installer: menu-command-not-in-package /usr/share/menu/live-installer:5 /usr/bin/gksudo

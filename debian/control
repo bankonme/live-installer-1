@@ -2,7 +2,7 @@ Source: live-installer
 Section: admin
 Priority: optional
 Maintainer: Timur Birsh <taem@linukz.org>
-Build-Depends: debhelper (>= 5)
+Build-Depends: debhelper (>= 7)
 Standards-Version: 3.9.1
 Homepage: http://github.com/taem/live-installer
 Vcs-Git: git://github.com/taem/live-installer.git
@@ -10,11 +10,13 @@ Vcs-Browser: http://github.com/taem/live-installer/tree/master
 
 Package: live-installer
 Architecture: all
-Depends: python (>= 2.4), python (<< 3), python-gtk2, python-glade2, python-parted, gparted, inxi
+Depends: python (>= 2.4), python (<< 3), python-gtk2, python-glade2, python-parted,
+	 gparted, inxi, gksu, ${misc:Depends}
 Description: Live Installer
  A live installer
 
 Package: live-installer-slideshow
 Architecture: all
+Depends: ${misc:Depends}
 Description: Live Installer Slideshow
  A Linux Mint slideshow for the live installer
