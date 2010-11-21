@@ -1,3 +1,43 @@
+live-installer (2010.11.21~kazsid0) unstable; urgency=low
+
+  * debian/control:
+    - Bump Standards-Version to 3.9.1
+    - Add Homepage, Vcs-Git and Vcs-Browser fields
+    - Build depend on debhelper >=7
+    - Add gksu package to binary dependencies of live-installer
+    - Add ${misc:Depends} to binary dependencies of both packages
+    - Add me as maintainer
+  * debian/rules:
+    - remove configure, configure-stamp, build-stamp targets
+    - move binary packages building to binary-indep
+    - move packages files installation to debian/*.install
+    - use dh_installinit and dh_installmenu to install live-installer init
+      script and menu file respectively
+    - install lintian overrides:
+      - live-installer: binary-without-manpage usr/bin/live-installer
+      - live-installer: binary-without-manpage usr/bin/live-installer-dm
+      - live-installer: desktop-command-not-in-package
+        /usr/share/applications/live-installer-launcher.desktop gksudo
+      - live-installer: menu-command-not-in-package
+        /usr/share/menu/live-installer:5 /usr/bin/gksudo
+      - live-installer-slideshow: embedded-javascript-library *
+    - remove useless debhelper scripts invocation
+  * debian/postinst: update in accordance with debian/rules changes. Also
+    rename as live-installer.postinst
+  * Add debian/live-installer.{prerm,postrm} scripts
+  * Move etc/init.d/live-installer and usr/share/menu/live-installer to debian
+    directory as live-installer.init and live-installer.menu respectively.
+    There is no way to specify which files installed by dh_installinit and
+    dh_installmenu.
+  * usr/lib/live-installer/installer.py: init script clean up moved to
+    maintainer scripts
+  * debian/copyright: update according to latest changes made by me and
+    Baurzhan. Also follow DEP5.
+  * debian/changelog: fix typos
+  * debian/{docs,dirs}: remove it
+
+ -- Timur Birsh <taem@linukz.org>  Sun, 21 Nov 2010 20:27:19 +0600
+
 live-installer (2010.10.26~kazsid0) unstable; urgency=low
 
   * Remove 'remove live user' - live image doesn't contain him.
