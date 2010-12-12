@@ -86,7 +86,11 @@ class InstallerEngine:
 
     def format_device(self, device, filesystem):
         ''' Format the given device to the specified filesystem '''
-        cmd = "mkfs -t %s %s" % (filesystem, device)
+        if filesystem == "swap":
+            cmd = "mkswap %s" % device
+        else:
+            cmd = "mkfs -t %s %s" % (filesystem, device)
+        print "EXECUTING: '%s'" % cmd
         p = Popen(cmd, shell=True)
         p.wait() # this blocks
         return p.returncode
@@ -167,13 +171,14 @@ class InstallerEngine:
             # format partitions as appropriate
             for item in self.fstab.get_entries():
                 if(item.mountpoint == "/"):
-                    root_device = item
-                    item.format = True
-                if(item.format):
+                    root_device = item                    
+                if(item.format is not None and item.format != ""):
                     # well now, we gets to nuke stuff.
                     # report it. should grab the total count of filesystems to be formatted ..
-                    self.update_progress(total=4, current=1, pulse=True, message=_("Formatting %s as %s..." % (item.device, item.filesystem)))
-                    self.format_device(item.device, item.filesystem)
+                    self.update_progress(total=4, current=1, pulse=True, message=_("Formatting %s as %s..." % (item.device, item.format)))
+                    self.format_device(item.device, item.format)    
+                    item.filesystem = item.format
+                
             # mount filesystem
             print " --> Mounting partitions"
             self.update_progress(total=4, current=2, message=_("Mounting %s on %s") % (root, "/source/"))
@@ -183,7 +188,7 @@ class InstallerEngine:
             print " ------ Mounting %s on %s" % (root_device.device, "/target/")
             self.do_mount(root_device.device, "/target", root_device.filesystem, None)
             for item in self.fstab.get_entries():
-                if(item.mountpoint != "/"):
+                if(item.mountpoint != "/" and item.mountpoint != "swap"):
                     print " ------ Mounting %s on %s" % (item.device, "/target" + item.mountpoint)
                     os.system("mkdir -p /target" + item.mountpoint)
                     self.do_mount(item.device, "/target" + item.mountpoint, item.filesystem, None)
@@ -219,6 +224,10 @@ class InstallerEngine:
                     our_current += 1
                     self.update_progress(total=our_total, current=our_current, message=_("Copying %s" % rpath))
 
+                    if os.path.exists(targetpath):
+                        if not os.path.isdir(targetpath):
+                            os.remove(targetpath)                        
+
                     if stat.S_ISLNK(st.st_mode):
                         if os.path.lexists(targetpath):
                             os.unlink(targetpath)
@@ -227,7 +236,7 @@ class InstallerEngine:
                     elif stat.S_ISDIR(st.st_mode):
                         if not os.path.isdir(targetpath):
                             os.mkdir(targetpath, mode)
-                    elif stat.S_ISCHR(st.st_mode):
+                    elif stat.S_ISCHR(st.st_mode):                        
                         os.mknod(targetpath, stat.S_IFCHR | mode, st.st_rdev)
                     elif stat.S_ISBLK(st.st_mode):
                         os.mknod(targetpath, stat.S_IFBLK | mode, st.st_rdev)
@@ -389,7 +398,7 @@ class InstallerEngine:
             if(self.grub_device is not None):
                 self.update_progress(pulse=True, total=our_total, current=our_current, message=_("Installing bootloader"))
                 print " --> Running grub-install"
-                self.run_in_chroot("grub-install %s" % self.grub_device)
+                self.run_in_chroot("grub-install --force %s" % self.grub_device)
                 self.configure_grub(our_total, our_current)
                 grub_retries = 0
                 while (not self.check_grub(our_total, our_current)):
@@ -420,7 +429,7 @@ class InstallerEngine:
             os.system("umount --force /target/sys/")
             os.system("umount --force /target/proc/")
             for item in self.fstab.get_entries():
-                if(item.mountpoint != "/"):
+                if(item.mountpoint != "/" and item.mountpoint != "swap"):
                     self.do_unmount("/target" + item.mountpoint)
             self.do_unmount("/target")
             self.do_unmount("/source")
@@ -428,8 +437,10 @@ class InstallerEngine:
             self.update_progress(done=True, message=_("Installation finished"))
             print " --> All done"
             
-        except Exception, detail:
-            print detail
+        except Exception:            
+            import traceback
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
     
     def run_in_chroot(self, command):
         os.system("chroot /target/ /bin/sh -c \"%s\"" % command)
@@ -470,15 +481,19 @@ class InstallerEngine:
         ''' Mount a filesystem '''
         p = None
         if(options is not None):
-            p = Popen("mount -o %s -t %s %s %s" % (options, type, device, dest),shell=True)
+            cmd = "mount -o %s -t %s %s %s" % (options, type, device, dest)            
         else:
-            p = Popen("mount -t %s %s %s" % (type, device, dest),shell=True)
+            cmd = "mount -t %s %s %s" % (type, device, dest)
+        print "EXECUTING: '%s'" % cmd
+        p = Popen(cmd ,shell=True)        
         p.wait()
         return p.returncode
 
     def do_unmount(self, mountpoint):
         ''' Unmount a filesystem '''
-        p = Popen("umount %s" % mountpoint, shell=True)
+        cmd = "umount %s" % mountpoint
+        print "EXECUTING: '%s'" % cmd
+        p = Popen(cmd, shell=True)
         p.wait()
         return p.returncode
 
@@ -500,7 +515,7 @@ class fstab(object):
     def __init__(self):
         self.mapping = dict()
 
-    def add_mount(self, device=None, mountpoint=None, filesystem=None, options=None,format=False):
+    def add_mount(self, device=None, mountpoint=None, filesystem=None, options=None,format=""):
         if(not self.mapping.has_key(device)):
             self.mapping[device] = fstab_entry(device, mountpoint, filesystem, options)
             self.mapping[device].format = format
@@ -531,4 +546,4 @@ class fstab_entry(object):
         self.mountpoint = mountpoint
         self.filesystem = filesystem
         self.options = options
-        self.format = False
+        self.format = ""
