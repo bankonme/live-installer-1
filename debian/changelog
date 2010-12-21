@@ -1,3 +1,9 @@
+live-installer (2010.12.21~kazsid0) unstable; urgency=low
+
+  * New upstream snapshot.
+
+ -- Timur Birsh <taem@linukz.org>  Tue, 21 Dec 2010 21:45:29 +0600
+
 live-installer (2010.12.16.1) debian; urgency=medium
 
   * Better validation process for username, passwords and hostname
