@@ -21,6 +21,10 @@ try:
     import gobject
     import time
     # import webkit
+    import GeoIP
+    import urllib
+    import webkit
+    import string
 except Exception, detail:
     print detail
 
@@ -29,6 +33,15 @@ import parted, commands
 
 gettext.install("live-installer", "/usr/share/locale")
 gtk.gdk.threads_init()
+
+INDEX_PARTITION_PATH=0
+INDEX_PARTITION_TYPE=1
+INDEX_PARTITION_DESCRIPTION=2
+INDEX_PARTITION_FORMAT_AS=3
+INDEX_PARTITION_MOUNT_AS=4
+INDEX_PARTITION_SIZE=5
+INDEX_PARTITION_FREE_SPACE=6
+INDEX_PARTITION_OBJECT=7
 
 ''' Handy. Makes message dialogs easy :D '''
 class MessageDialog(object):
@@ -50,12 +63,8 @@ class MessageDialog(object):
 
 class WizardPage:
 
-    def __init__(self, breadcrumb_label, breadcrumb_text, help_text):
-        self.breadcrumb_label = breadcrumb_label
-        self.breadcrumb_text = "" #breadcrumb_text
-        self.help_text = help_text
-        #self.breadcrumb_label.set_markup("<small>%s</small> <span color=\"#FFFFFF\">-</span>" % self.breadcrumb_text)
-        self.breadcrumb_label.set_markup("")
+    def __init__(self, help_text):
+        self.help_text = help_text        
 		
 class InstallerWindow:
 
@@ -84,27 +93,15 @@ class InstallerWindow:
         # Wizard pages
         [self.PAGE_LANGUAGE, self.PAGE_PARTITIONS, self.PAGE_USER, self.PAGE_ADVANCED, self.PAGE_KEYBOARD, self.PAGE_OVERVIEW, self.PAGE_INSTALL, self.PAGE_TIMEZONE] = range(8)
         self.wizard_pages = range(8)
-        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage(self.wTree.get_widget("label_step_language"), _("Language selection"), _("Please select your language"))
-        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage(self.wTree.get_widget("label_step_timezone"), _("Timezone"), _("Please select your timezone"))
-        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage(self.wTree.get_widget("label_step_keyboard"), _("Keyboard layout"), _("Please select your keyboard layout"))
-        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage(self.wTree.get_widget("label_step_partitions"), _("Disk partitioning"), _("Please select where you want to install %s") % DISTRIBUTION_NAME)
-        self.wizard_pages[self.PAGE_USER] = WizardPage(self.wTree.get_widget("label_step_user"), _("User info"), _("Please indicate your name and select a username, a password and a hostname"))
-        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage(self.wTree.get_widget("label_step_advanced"), _("Advanced options"), _("Please review the following advanced options"))
-        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(self.wTree.get_widget("label_step_overview"), _("Summary"), _("Please review this summary and make sure everything is correct"))
-        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(self.wTree.get_widget("label_step_install"), _("Installation"), _("Please wait while %s is being installed on your computer") % DISTRIBUTION_NAME)
-
-        # Remove last separator in breadcrumb
-        self.wizard_pages[self.PAGE_INSTALL].breadcrumb_label.set_markup("<small>%s</small>" % self.wizard_pages[self.PAGE_INSTALL].breadcrumb_text)
-
-        # make first step label bolded.
-        label = self.wTree.get_widget("label_step_language")
-        text = label.get_label()
-        attrs = pango.AttrList()
-        nattr = pango.AttrWeight(pango.WEIGHT_BOLD, 0, len(text))
-        attrs.insert(nattr)
-        label.set_attributes(attrs)
-        label.set_sensitive(False)
-
+        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage(_("Choose your language"))
+        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage(_("Choose your timezone"))
+        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage(_("Choose your keyboard layout"))
+        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage(_("Select where you want to install Linux Mint"))
+        self.wizard_pages[self.PAGE_USER] = WizardPage(_("Please indicate your name and select a username, a password and a hostname"))
+        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage(_("Please review the following advanced options"))
+        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(_("Please review this summary and make sure everything is correct"))
+        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(_("Please wait while Linux Mint is being installed on your computer"))
+        
         # set the button events (wizard_cb)
         self.wTree.get_widget("button_next").connect("clicked", self.wizard_cb, False)
         self.wTree.get_widget("button_back").connect("clicked", self.wizard_cb, True)
@@ -144,33 +141,37 @@ class InstallerWindow:
         # device
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn(_("Device"), ren)
-        column.add_attribute(ren, "markup", 0)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_PATH)
         self.wTree.get_widget("treeview_disks").append_column(column)
-        # filesystem
+        # Type
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Description"), ren)
-        column.add_attribute(ren, "markup", 1)
+        column = gtk.TreeViewColumn(_("Type"), ren)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_TYPE)
+        self.wTree.get_widget("treeview_disks").append_column(column)
+        # description
+        ren = gtk.CellRendererText()
+        column = gtk.TreeViewColumn(_("Operating system"), ren)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_DESCRIPTION)
         self.wTree.get_widget("treeview_disks").append_column(column)
         # format
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn(_("Format as"), ren)
-        column.add_attribute(ren, "markup", 2)
-        #column.add_attribute(ren, "visible", 9)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_FORMAT_AS)        
         self.wTree.get_widget("treeview_disks").append_column(column)      
         # mount point
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn(_("Mount as"), ren)
-        column.add_attribute(ren, "markup", 3)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_MOUNT_AS)
         self.wTree.get_widget("treeview_disks").append_column(column)
         # size
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn(_("Size (MB)"), ren)
-        column.add_attribute(ren, "markup", 4)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_SIZE)
         self.wTree.get_widget("treeview_disks").append_column(column)
         # Used space
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn(_("Free space (MB)"), ren)
-        column.add_attribute(ren, "markup", 8)
+        column.add_attribute(ren, "markup", INDEX_PARTITION_FREE_SPACE)
         self.wTree.get_widget("treeview_disks").append_column(column)
 
         # about you
@@ -220,12 +221,13 @@ class InstallerWindow:
 
         # keyboard page
         self.wTree.get_widget("label_test_kb").set_label(_("Use this box to test your keyboard layout"))
+        self.wTree.get_widget("label_kb_model").set_label(_("Model"))
+        
         # kb models
-        ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Model"), ren)
-        column.add_attribute(ren, "text", 0)
-        self.wTree.get_widget("treeview_models").append_column(column)
-        self.wTree.get_widget("treeview_models").connect("cursor-changed", self.cb_change_kb_model)
+        cell = gtk.CellRendererText()
+        self.wTree.get_widget("combobox_kb_model").pack_start(cell, True)
+        self.wTree.get_widget("combobox_kb_model").add_attribute(cell, 'text', 0)        
+        self.wTree.get_widget("combobox_kb_model").connect("changed", self.cb_change_kb_model)
 
         # kb layouts
         ren = gtk.CellRendererText()
@@ -233,6 +235,13 @@ class InstallerWindow:
         column.add_attribute(ren, "text", 0)
         self.wTree.get_widget("treeview_layouts").append_column(column)
         self.wTree.get_widget("treeview_layouts").connect("cursor-changed", self.cb_change_kb_layout)
+        
+        ren = gtk.CellRendererText()
+        column = gtk.TreeViewColumn(_("Variant"), ren)
+        column.add_attribute(ren, "text", 0)
+        self.wTree.get_widget("treeview_variants").append_column(column)
+        self.wTree.get_widget("treeview_variants").connect("cursor-changed", self.cb_change_kb_variant)
+        
         self.build_kb_lists()
 
         # 'about to install' aka overview
@@ -253,29 +262,13 @@ class InstallerWindow:
         self.wTree.get_widget("menubar").realize()
         style = self.wTree.get_widget("menubar").style.copy()
         self.wTree.get_widget("menubar").hide()
-        # apply to the header
-        self.wTree.get_widget("eventbox1").realize()
-        self.wTree.get_widget("eventbox1").modify_bg(gtk.STATE_NORMAL, style.bg[gtk.STATE_NORMAL])
-        self.wTree.get_widget("eventbox1").modify_bg(gtk.STATE_ACTIVE, style.bg[gtk.STATE_ACTIVE])
-        self.wTree.get_widget("eventbox1").modify_bg(gtk.STATE_INSENSITIVE, style.bg[gtk.STATE_INSENSITIVE])
+        # apply to the header       
         self.wTree.get_widget("help_label").realize()
-        self.wTree.get_widget("help_label").modify_fg(gtk.STATE_NORMAL, style.fg[gtk.STATE_NORMAL])
-        # now apply to the breadcrumb nav
-        index = 0
-        for page in self.wizard_pages:
-            page.breadcrumb_label.modify_fg(gtk.STATE_NORMAL, style.fg[gtk.STATE_NORMAL])
+        self.wTree.get_widget("help_label").modify_fg(gtk.STATE_NORMAL, style.fg[gtk.STATE_NORMAL])       
         if(fullscreen):
             # dedicated installer mode thingum
-            img = gtk.gdk.pixbuf_new_from_file_at_size("/usr/share/live-installer/logo.svg", 96, 96)
-            self.wTree.get_widget("logo").set_from_pixbuf(img)
             self.window.maximize()
-            self.window.fullscreen()
-        else:
-            # running on livecd (windowed)
-            img = gtk.gdk.pixbuf_new_from_file_at_size("/usr/share/live-installer/logo.svg", 64, 64)
-            self.wTree.get_widget("logo").set_from_pixbuf(img)
-        # visible please :)    
-        
+            self.window.fullscreen()        
         
         # ''' Launch the Slideshow '''
         # if ("_" in self.locale):
@@ -311,20 +304,20 @@ class InstallerWindow:
         model, iter = self.wTree.get_widget("treeview_disks").get_selection().get_selected()
         if iter is not None:
             row = model[iter]
-            partition = row[10]
+            partition = row[INDEX_PARTITION_OBJECT]
             if not partition.real_type == parted.PARTITION_EXTENDED and not partition.partition.number == -1:                       
-                dlg = PartitionDialog(row[0], row[3], row[2], row[1])
+                dlg = PartitionDialog(row[INDEX_PARTITION_PATH], row[INDEX_PARTITION_MOUNT_AS], row[INDEX_PARTITION_FORMAT_AS], row[INDEX_PARTITION_DESCRIPTION])
                 (mount_as, format_as) = dlg.show()
                 # now set the model as shown..                
-                row[3] = mount_as
-                row[2] = format_as                
+                row[INDEX_PARTITION_MOUNT_AS] = mount_as
+                row[INDEX_PARTITION_FORMAT_AS] = format_as                
                 model[iter] = row                
                 
     def partitions_popup_menu( self, widget, event ):
         if event.button == 3:
             model, iter = self.wTree.get_widget("treeview_disks").get_selection().get_selected()
             if iter is not None:
-                partition = model.get_value(iter, 10)
+                partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
                 if not partition.real_type == parted.PARTITION_EXTENDED and not partition.partition.number == -1:
                     menu = gtk.Menu()
                     menuItem = gtk.MenuItem(_("Edit"))
@@ -345,30 +338,30 @@ class InstallerWindow:
         model = self.wTree.get_widget("treeview_disks").get_model()
         iter = model.get_iter_first()
         while iter is not None:
-            iter_partition = model.get_value(iter, 10)
+            iter_partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
             if iter_partition == partition:
-                model.set_value(iter, 3, "/") # add / assignment
-                model.set_value(iter, 2, "ext4") # format                
+                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "/") # add / assignment
+                model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "ext4") # format                
             else:
-                mountpoint = model.get_value(iter, 3)
+                mountpoint = model.get_value(iter, INDEX_PARTITION_MOUNT_AS)
                 if mountpoint == "/":
-                    model.set_value(iter, 3, "") # remove / assignment
-                    model.set_value(iter, 2, "") # don't format                   
+                    model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "") # remove / assignment
+                    model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                   
             iter = model.iter_next(iter)
 
     def assignHome(self, menu, partition):
         model = self.wTree.get_widget("treeview_disks").get_model()
         iter = model.get_iter_first()
         while iter is not None:
-            iter_partition = model.get_value(iter, 10)
+            iter_partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
             if iter_partition == partition:
-                model.set_value(iter, 3, "/home") # add /home assignment
-                model.set_value(iter, 2, "") # don't format                
+                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "/home") # add /home assignment
+                model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                
             else:
-                mountpoint = model.get_value(iter, 3)
+                mountpoint = model.get_value(iter, INDEX_PARTITION_MOUNT_AS)
                 if mountpoint == "/home":
-                    model.set_value(iter, 3, "") # remove /home assignment
-                    model.set_value(iter, 2, "") # don't format                    
+                    model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "") # remove /home assignment
+                    model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                    
             iter = model.iter_next(iter)
 
     def refresh_partitions(self, widget, data=None):
@@ -382,6 +375,17 @@ class InstallerWindow:
 
     def build_lang_list(self):
 
+        #Try to find out where we're located...
+        cur_country_code = None
+        try:
+            whatismyip = 'http://debian.linuxmint.com/installer/show_my_ip.php'
+            ip = urllib.urlopen(whatismyip).readlines()[0]
+            gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
+            cur_country_code = gi.country_code_by_addr(ip)
+        except:
+            pass #best effort, we get here if we're not connected to the Internet            
+
+        #Plan B... find out what locale we're in (i.e. USA on the live session)
         cur_lang = os.environ['LANG']
         if("." in cur_lang):
             cur_lang = cur_lang.split(".")[0]
@@ -435,6 +439,7 @@ class InstallerWindow:
                             country = country_code
 
                         language_label = "%s (%s)" % (language, country)
+                        #language_label = "%s - %s" % (country, language)
 
                         iter = model.append()
                         model.set_value(iter, 0, language_label)
@@ -445,8 +450,22 @@ class InstallerWindow:
                         else:
                             flag_path = self.resource_dir + '/flags/16/generic.png'
                             model.set_value(iter, 2, gtk.gdk.pixbuf_new_from_file(flag_path))
-                        if(locale_code == cur_lang):
+                        # If it's matching our country code, that's our language right there.. 
+                        if ((cur_country_code is not None) and (cur_country_code.lower() == country_code)):                            
+                            if (set_index is None):
+                                set_index = iter                                
+                            else:
+                                # If we find more than one language for a particular country, one of them being English, go for English by default.
+                                if (language_code == "en"):
+                                    set_index = iter                 
+                                # Guesswork... handy for countries which have their own language (fr_FR, de_DE, es_ES.. etc. )
+                                elif (country_code == language_code):
+                                    set_index = iter
+                                    
+                        # as a plan B... use the locale (USA)
+                        if((set_index is None) and (locale_code == cur_lang)):
                             set_index = iter
+                            #print "Set via locale: " + cur_lang
 
         treeview = self.wTree.get_widget("treeview_language_list")
         treeview.set_model(model)
@@ -512,7 +531,12 @@ class InstallerWindow:
                                             
             grub_model = gtk.ListStore(str)
             partitions = []
-            for disk in disks:                
+            
+            html_partitions = ""        
+            model = gtk.ListStore(str,str,str,str,str,str,str, object, bool, str, str, bool)
+            model2 = gtk.ListStore(str)
+            
+            for disk in disks:                 
                 path =  disk # i.e. /dev/sda
                 grub_model.append([path])
                 device = parted.getDevice(path)
@@ -521,6 +545,7 @@ class InstallerWindow:
                 last_added_partition = Partition(partition)
                 partitions.append(last_added_partition)
                 partition = partition.nextPartition()
+                html_partitions = html_partitions + "<table width='100%'><tr>"
                 while (partition is not None):
                     if last_added_partition.partition.number == -1 and partition.number == -1:
                         last_added_partition.add_partition(partition)
@@ -531,7 +556,7 @@ class InstallerWindow:
                         if "swap" in last_added_partition.type:
                             last_added_partition.type = _("swap")
 
-                        if partition.number != -1 and "swap" not in last_added_partition.type:
+                        if partition.number != -1 and "swap" not in last_added_partition.type and partition.type != parted.PARTITION_EXTENDED:
                             
                             grub_model.append([partition.path])
 
@@ -540,111 +565,161 @@ class InstallerWindow:
                                 os.popen('umount /tmp/live-installer/tmpmount')
 
                             #Mount partition if not mounted
-                            if (partition.path not in commands.getoutput('mount')):
+                            if (partition.path not in commands.getoutput('mount')):                                
                                 os.system("mount %s /tmp/live-installer/tmpmount" % partition.path)
 
                             #Identify partition's description and used space
                             if (partition.path in commands.getoutput('mount')):
-                                last_added_partition.used_space = commands.getoutput("df | grep %s | awk {'print $5'}" % partition.path)
-                                if "%" in last_added_partition.used_space:
-                                    used_space_pct = int(last_added_partition.used_space.replace("%", "").strip())
-                                    last_added_partition.free_space = int(float(last_added_partition.size) * (float(100) - float(used_space_pct)) / float(100))
-                                mount_point = commands.getoutput("df | grep %s | awk {'print $6'}" % partition.path)
-                                if os.path.exists(os.path.join(mount_point, 'etc/lsb-release')):
-                                    last_added_partition.description = commands.getoutput("cat " + os.path.join(mount_point, 'etc/lsb-release') + " | grep DISTRIB_DESCRIPTION").replace('DISTRIB_DESCRIPTION', '').replace('=', '').replace('"', '').strip()
-                                elif os.path.exists(os.path.join(mount_point, 'etc/issue')):
-                                    last_added_partition.description = commands.getoutput("cat " + os.path.join(mount_point, 'etc/issue')).replace('\\n', '').replace('\l', '').strip()
-                                elif os.path.exists(os.path.join(mount_point, 'Windows/servicing/Version')):
-                                    version = commands.getoutput("ls %s" % os.path.join(mount_point, 'Windows/servicing/Version'))
-                                    if version.startswith("6.1"):
-                                        last_added_partition.description = "Windows 7"
-                                    elif version.startswith("6.0"):
-                                        last_added_partition.description = "Windows Vista"
-                                    elif version.startswith("5.1") or version.startswith("5.2"):
-                                        last_added_partition.description = "Windows XP"
-                                    elif version.startswith("5.0"):
-                                        last_added_partition.description = "Windows 2000"
-                                    elif version.startswith("4.90"):
-                                        last_added_partition.description = "Windows Me"
-                                    elif version.startswith("4.1"):
-                                        last_added_partition.description = "Windows 98"
-                                    elif version.startswith("4.0.1381"):
-                                        last_added_partition.description = "Windows NT"
-                                    elif version.startswith("4.0.950"):
-                                        last_added_partition.description = "Windows 95"
-                                elif os.path.exists(os.path.join(mount_point, 'Boot/BCD')):
-                                    if os.system("grep -qs \"V.i.s.t.a\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
-                                        last_added_partition.description = "Windows Vista bootloader"
-                                    elif os.system("grep -qs \"W.i.n.d.o.w.s. .7\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
-                                        last_added_partition.description = "Windows 7 bootloader"
-                                    elif os.system("grep -qs \"W.i.n.d.o.w.s. .R.e.c.o.v.e.r.y. .E.n.v.i.r.o.n.m.e.n.t\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
-                                        last_added_partition.description = "Windows recovery"
-                                    elif os.system("grep -qs \"W.i.n.d.o.w.s. .S.e.r.v.e.r. .2.0.0.8\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
-                                        last_added_partition.description = "Windows Server 2008 bootloader"
-                                    else:
-                                        last_added_partition.description = "Windows bootloader"
-                                elif os.path.exists(os.path.join(mount_point, 'Windows/System32')):
-                                    last_added_partition.description = "Windows"
+                                df_lines = commands.getoutput("df 2>/dev/null | grep %s" % partition.path).split('\n')
+                                for df_line in df_lines:
+                                    df_elements = df_line.split()
+                                    if df_elements[0] == partition.path:
+                                        last_added_partition.used_space = df_elements[4]  
+                                        mount_point = df_elements[5]                              
+                                        if "%" in last_added_partition.used_space:
+                                            used_space_pct = int(last_added_partition.used_space.replace("%", "").strip())
+                                            last_added_partition.free_space = int(float(last_added_partition.size) * (float(100) - float(used_space_pct)) / float(100))                                            
+                                                                            
+                                        if os.path.exists(os.path.join(mount_point, 'etc/lsb-release')):
+                                            last_added_partition.description = commands.getoutput("cat " + os.path.join(mount_point, 'etc/lsb-release') + " | grep DISTRIB_DESCRIPTION").replace('DISTRIB_DESCRIPTION', '').replace('=', '').replace('"', '').strip()                                    
+                                        if os.path.exists(os.path.join(mount_point, 'etc/issue')):
+                                            last_added_partition.description = commands.getoutput("cat " + os.path.join(mount_point, 'etc/issue')).replace('\\n', '').replace('\l', '').strip()                                    
+                                        if os.path.exists(os.path.join(mount_point, 'Windows/servicing/Version')):
+                                            version = commands.getoutput("ls %s" % os.path.join(mount_point, 'Windows/servicing/Version'))                                    
+                                            if version.startswith("6.1"):
+                                                last_added_partition.description = "Windows 7"
+                                            elif version.startswith("6.0"):
+                                                last_added_partition.description = "Windows Vista"
+                                            elif version.startswith("5.1") or version.startswith("5.2"):
+                                                last_added_partition.description = "Windows XP"
+                                            elif version.startswith("5.0"):
+                                                last_added_partition.description = "Windows 2000"
+                                            elif version.startswith("4.90"):
+                                                last_added_partition.description = "Windows Me"
+                                            elif version.startswith("4.1"):
+                                                last_added_partition.description = "Windows 98"
+                                            elif version.startswith("4.0.1381"):
+                                                last_added_partition.description = "Windows NT"
+                                            elif version.startswith("4.0.950"):
+                                                last_added_partition.description = "Windows 95"
+                                        elif os.path.exists(os.path.join(mount_point, 'Boot/BCD')):
+                                            if os.system("grep -qs \"V.i.s.t.a\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
+                                                last_added_partition.description = "Windows Vista bootloader"
+                                            elif os.system("grep -qs \"W.i.n.d.o.w.s. .7\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
+                                                last_added_partition.description = "Windows 7 bootloader"
+                                            elif os.system("grep -qs \"W.i.n.d.o.w.s. .R.e.c.o.v.e.r.y. .E.n.v.i.r.o.n.m.e.n.t\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
+                                                last_added_partition.description = "Windows recovery"
+                                            elif os.system("grep -qs \"W.i.n.d.o.w.s. .S.e.r.v.e.r. .2.0.0.8\" " + os.path.join(mount_point, 'Boot/BCD')) == 0:
+                                                last_added_partition.description = "Windows Server 2008 bootloader"
+                                            else:
+                                                last_added_partition.description = "Windows bootloader"
+                                        elif os.path.exists(os.path.join(mount_point, 'Windows/System32')):
+                                            last_added_partition.description = "Windows"
+                                        break
+                            else:
+                                print "Failed to mount %s" % partition.path
 
+                            
                             #Umount temp folder
                             if ('/tmp/live-installer/tmpmount' in commands.getoutput('mount')):
                                 os.popen('umount /tmp/live-installer/tmpmount')
+                                
+                    if last_added_partition.size > 1.0:
+                        if last_added_partition.real_type == parted.PARTITION_LOGICAL:
+                            display_name = "  " + last_added_partition.name
+                        else:
+                            display_name = last_added_partition.name
 
+                        iter = model.append([display_name, last_added_partition.type, last_added_partition.description, "", "", '%.0f' % round(last_added_partition.size, 0), last_added_partition.free_space, last_added_partition, False, last_added_partition.start, last_added_partition.end, False]);
+                        if last_added_partition.partition.number == -1:                     
+                            model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='#a9a9a9'>%s</span>" % last_added_partition.type)                                    
+                        elif last_added_partition.real_type == parted.PARTITION_EXTENDED:                    
+                            model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='#a9a9a9'>%s</span>" % _("Extended"))  
+                        else:                                        
+                            if last_added_partition.type == "ntfs":
+                                color = "#42e5ac"
+                            elif last_added_partition.type == "fat32":
+                                color = "#18d918"
+                            elif last_added_partition.type == "ext4":
+                                color = "#4b6983"
+                            elif last_added_partition.type == "ext3":
+                                color = "#7590ae"
+                            elif last_added_partition.type in ["linux-swap", "swap"]:
+                                color = "#c1665a"
+                            else:
+                                color = "#a9a9a9"
+                            model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='%s'>%s</span>" % (color, last_added_partition.type))                                            
+                            html_partition = "<td class='partition-cell' title='$title' style='border: 3px solid $color;' width='$space%'><div class='partition'>\n  <div style='width: $usage; background-color: #f8f8ba; height: 50px'></div>\n <div class='partition-text'>$path</div><div class='partition-os'>$OS</div>\n</div>\n</td>"        
+                            deviceSize = float(device.getSize()) * float(0.9) # Hack.. reducing the real size to 90% of what it is, to make sure our partitions fit..
+                            space = int((float(partition.getSize()) / deviceSize) * float(80))                            
+                            subs = {}
+                            if (space >= 10):
+                                subs['path'] = display_name.replace("/dev/", "")                            
+                                subs['OS'] = last_added_partition.description
+                            elif (space >= 5):
+                                subs['path'] = display_name.replace("/dev/", "")                            
+                                subs['OS'] = ""                            
+                            else:
+                                #Not enough space, don't write the name
+                                subs['path'] = ""                          
+                                subs['OS'] = ""
+                            subs['color'] = color                            
+                            if (space == 0):
+                                space = 1
+                            subs['space'] = space
+                            subs['title'] = display_name + "\n" + last_added_partition.description
+                            if "%" in last_added_partition.used_space:               
+                                subs['usage'] = last_added_partition.used_space.strip()
+                            html_partition = string.Template(html_partition).safe_substitute(subs)                     
+                            html_partitions = html_partitions + html_partition
+                            
                     partition = partition.nextPartition()
+                html_partitions = html_partitions + "</tr></table>"
             self.wTree.get_widget("combobox_grub").set_model(grub_model)
             self.wTree.get_widget("combobox_grub").set_active(0)
+            gtk.gdk.threads_enter()
+            
+            
+            import tempfile
+            
+            html_header = "<html><head><style>body {background-color:#d6d6d6;} \
+            .partition{position:relative; width:100%; float: left; background: white;} \
+            .partition-cell{ position:relative; margin: 2px 5px 2px 0; padding: 1px; float: left; background: white;} \
+            .partition-text{ position:absolute; top:10; text-align: center; width=100px; left: 0; right: 0; margin: 0 auto; font-size:12px; } \
+            .partition-os{ position:absolute; top:30; text-align: center; width=100px; left: 0; right: 0; margin: 0 auto; font-size:10px; font-style:italic;color:#555555;} </style></head><body>"
+            html_footer = "</body></html>"
+            html = html_header + html_partitions + html_footer
+           
+            # create temporary file
+            f = tempfile.NamedTemporaryFile(delete=False)
+            f.write(html)
+            f.close()  
+            
+            browser = webkit.WebView()
+            s = browser.get_settings()
+            s.set_property('enable-file-access-from-file-uris', True)
+            s.set_property('enable-default-context-menu', False)            
+            browser.open(f.name)            
+            #browser.load_html_string(html, "file://")     
+            self.wTree.get_widget("scrolled_partitions").add(browser)
+            self.wTree.get_widget("scrolled_partitions").show_all()    
+                                                         
+            
+            gtk.gdk.threads_leave()
+            
+            gtk.gdk.threads_enter()
+            self.wTree.get_widget("treeview_disks").set_model(model)
+            gtk.gdk.threads_leave()
+            dialog.hide()
+            gtk.gdk.threads_enter()
+            self.window.set_sensitive(True)
+            self.window.window.set_cursor(None)
+            gtk.gdk.threads_leave()
         except Exception, detail:
             print detail
-
-        from screen import Screen        
-        myScreen = Screen(partitions)
-        self.part_screen = myScreen
+                                      
+                
         
-        gtk.gdk.threads_enter()
-        kids = self.wTree.get_widget("vbox_cairo").get_children()
-        if(kids is not None):
-            for sprog in kids:
-                self.wTree.get_widget("vbox_cairo").remove(sprog)
-        self.wTree.get_widget("vbox_cairo").add(myScreen)
-        self.wTree.get_widget("vbox_cairo").show_all()
-        color = self.wTree.get_widget("notebook1").style.bg[gtk.STATE_ACTIVE]
-        self.part_screen.modify_bg(gtk.STATE_NORMAL, color)
-        gtk.gdk.threads_leave()
-
-        model = gtk.ListStore(str,str,str,str,str,bool, str, str, str, bool, object)
-        model2 = gtk.ListStore(str)
-
-        extended_sectors = [-1, -1]
-
-        colors = [ "#010510", "#000099", "#009999", "#009900", "#999999", "#990000" ]
-
-        for partition in partitions:
-            if partition.size > 0.5:
-                color = colors[partition.partition.number % len(colors)]
-
-                if partition.real_type == parted.PARTITION_LOGICAL:
-                    display_name = "  " + partition.name
-                else:
-                    display_name = partition.name
-
-                if partition.partition.number == -1:
-                    model.append(["<small><span foreground='#555555'>" + display_name + "</span></small>", partition.type, "", "", '%.0f' % round(partition.size, 0), False, partition.start, partition.end, partition.free_space, False, partition])
-                elif partition.real_type == parted.PARTITION_EXTENDED:
-                    model.append(["<small><span foreground='#555555'>extended partition</span></small>", None, "", "",  '%.0f' % round(partition.size, 0), False, partition.start, partition.end, partition.free_space, False, partition])
-                else:
-                    if partition.description != "":
-                        model.append(["<span foreground='" + color + "'>" + display_name + "</span>", "%s (%s)" % (partition.description, partition.type), "", "", '%.0f' % round(partition.size, 0), False, partition.start, partition.end, partition.free_space, True, partition])
-                    else:
-                        model.append(["<span foreground='" + color + "'>" + display_name + "</span>", partition.type, "", "", '%.0f' % round(partition.size, 0), False, partition.start, partition.end, partition.free_space, True, partition])
-
-        gtk.gdk.threads_enter()
-        self.wTree.get_widget("treeview_disks").set_model(model)
-        gtk.gdk.threads_leave()
-        dialog.hide()
-        gtk.gdk.threads_enter()
-        self.window.set_sensitive(True)
-        self.window.window.set_cursor(None)
-        gtk.gdk.threads_leave()
 
     def build_kb_lists(self):
         ''' Do some xml kung-fu and load the keyboard stuffs '''
@@ -673,12 +748,13 @@ class InstallerWindow:
         model_models = gtk.ListStore(str,str)
         model_models.set_sort_column_id(0, gtk.SORT_ASCENDING)
         model_layouts = gtk.ListStore(str,str)
-        model_layouts.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        model_layouts.set_sort_column_id(0, gtk.SORT_ASCENDING)        
         dom = parse(xml_file)
 
         # if we find the users keyboard info we can set it in the list
         set_keyboard_model = None
         set_keyboard_layout = None
+        set_keyboard_variant = None
 
         # grab the root element
         root = dom.getElementsByTagName('xkbConfigRegistry')[0]
@@ -702,8 +778,8 @@ class InstallerWindow:
             item = self.getText(name.childNodes)
             if(item == self.keyboard_layout):
                 set_keyboard_layout = iter_layout
-        # now set the model
-        self.wTree.get_widget("treeview_models").set_model(model_models)
+        # now set the model        
+        self.wTree.get_widget("combobox_kb_model").set_model(model_models)
         self.wTree.get_widget("treeview_layouts").set_model(model_layouts)
 
         if(set_keyboard_layout is not None):
@@ -714,14 +790,61 @@ class InstallerWindow:
             path = model.get_path(set_keyboard_layout)
             treeview.set_cursor(path, focus_column=column)
             treeview.scroll_to_cell(path, column=column)
-        if(set_keyboard_model is not None):
-            # show it in the list
-            treeview = self.wTree.get_widget("treeview_models")
-            model = treeview.get_model()
-            column = treeview.get_column(0)
-            path = model.get_path(set_keyboard_model)
-            treeview.set_cursor(path, focus_column=column)
-            treeview.scroll_to_cell(path, column=column)
+        if(set_keyboard_model is not None):         
+             # show it in the combo
+            combo = self.wTree.get_widget("combobox_kb_model")
+            model = combo.get_model()                    
+            combo.set_active_iter(set_keyboard_model)            
+            
+    def build_kb_variant_lists(self):
+        # firstly we'll determine the layouts in use
+        p = subprocess.Popen("setxkbmap -print",shell=True,stdout=subprocess.PIPE)
+        for line in p.stdout:
+            # strip it
+            line = line.rstrip("\r\n")
+            line = line.replace("{","")
+            line = line.replace("}","")
+            line = line.replace(";","")
+            if("xkb_symbols" in line):
+                # decipher the layout in use
+                section = line.split("\"")[1] # split by the " mark
+                self.keyboard_layout = section.split("+")[1]
+        p.poll()
+
+        xml_file = '/usr/share/X11/xkb/rules/xorg.xml'      
+        model_variants = gtk.ListStore(str,str)
+        model_variants.set_sort_column_id(0, gtk.SORT_ASCENDING)        
+        dom = parse(xml_file)
+        
+        # grab the root element
+        root = dom.getElementsByTagName('xkbConfigRegistry')[0]
+        # build the list of variants       
+        root_layouts = root.getElementsByTagName('layoutList')[0]
+        for layout in root_layouts.getElementsByTagName('layout'):
+            conf = layout.getElementsByTagName('configItem')[0]
+            layout_name = self.getText(conf.getElementsByTagName('name')[0].childNodes)            
+            layout_description = self.getText(conf.getElementsByTagName('description')[0].childNodes)            
+            if (layout_name == self.keyboard_layout):
+                iter_variant = model_variants.append([layout_description, None])  
+                variants_list = layout.getElementsByTagName('variantList')
+                if len(variants_list) > 0:
+                    root_variants = layout.getElementsByTagName('variantList')[0]   
+                    for variant in root_variants.getElementsByTagName('variant'):                    
+                        variant_conf = variant.getElementsByTagName('configItem')[0]
+                        variant_name = self.getText(variant_conf.getElementsByTagName('name')[0].childNodes)
+                        variant_description = "%s - %s" % (layout_description, self.getText(variant_conf.getElementsByTagName('description')[0].childNodes))
+                        iter_variant = model_variants.append([variant_description, variant_name])                                                    
+                break
+                                                                                
+        # now set the model        
+        self.wTree.get_widget("treeview_variants").set_model(model_variants)
+        
+        # select the first item (standard variant layout)
+        treeview = self.wTree.get_widget("treeview_variants")
+        model = treeview.get_model()
+        column = treeview.get_column(0)
+        path = model.get_path(model.get_iter_first())
+        treeview.set_cursor(path, focus_column=column)
 
     def getText(self, nodelist):
         rc = []
@@ -754,20 +877,16 @@ class InstallerWindow:
         row = model[active]
         self.timezone = row[0]
         self.timezone_code = row[1]
-
-    def cb_change_kb_model(self, treeview, data=None):
+           
+    def cb_change_kb_model(self, combobox, data=None):
         ''' Called whenever someone updates the keyboard model '''
-        model = treeview.get_model()
-        active = treeview.get_selection().get_selected_rows()
-        if(len(active) < 1):
-            return
-        active = active[1][0]
-        if(active is None):
-            return
-        row = model[active]
-        os.system("setxkbmap -model %s" % row[1])
-        self.keyboard_model = row[1]
-        self.keyboard_model_desc = row[0]
+        model = combobox.get_model()
+        active = combobox.get_active()
+        if(active > -1):
+            row = model[active]
+            os.system("setxkbmap -model %s" % row[1])
+            self.keyboard_model = row[1]
+            self.keyboard_model_desc = row[0]
 
     def cb_change_kb_layout(self, treeview, data=None):
         ''' Called whenever someone updates the keyboard layout '''
@@ -782,6 +901,24 @@ class InstallerWindow:
         os.system("setxkbmap -layout %s" % row[1])
         self.keyboard_layout = row[1]
         self.keyboard_layout_desc = row[0]
+        self.build_kb_variant_lists()
+        
+    def cb_change_kb_variant(self, treeview, data=None):
+        ''' Called whenever someone updates the keyboard layout '''
+        model = treeview.get_model()
+        active = treeview.get_selection().get_selected_rows()
+        if(len(active) < 1):
+            return
+        active = active[1][0]
+        if(active is None):
+            return
+        row = model[active]
+        if (row[1] is None):
+            os.system("setxkbmap -layout %s" % self.keyboard_layout)
+        else:
+            os.system("setxkbmap -variant %s" % row[1])
+        self.keyboard_variant = row[1]
+        self.keyboard_variant_desc = row[0]
 
     def pass_mismatcher(self, widget):
         ''' Someone typed into the entry '''
@@ -807,20 +944,7 @@ class InstallerWindow:
             label.set_label(_("Passwords match"))
 
     def activate_page(self, index):
-        # Make breadcrumb normal
-        for page in self.wizard_pages:
-            attrs = pango.AttrList()
-            text = self.wizard_pages[index].breadcrumb_text
-            battr = pango.AttrWeight(pango.WEIGHT_NORMAL, 0, len(text))
-            attrs.insert(battr)
-            page.breadcrumb_label.set_attributes(attrs)
-
-        # Prepare bold style for one particular breadcrumb item
-        attrs = pango.AttrList()
-        battr = pango.AttrWeight(pango.WEIGHT_BOLD, 0, len(text))
-        attrs.insert(battr)
-        self.wizard_pages[index].breadcrumb_label.set_attributes(attrs)
-        self.wTree.get_widget("help_label").set_markup("%s" % self.wizard_pages[index].help_text)
+        self.wTree.get_widget("help_label").set_markup("<big><b>%s</b></big>" % self.wizard_pages[index].help_text)
         self.wTree.get_widget("notebook1").set_current_page(index)
 
 
