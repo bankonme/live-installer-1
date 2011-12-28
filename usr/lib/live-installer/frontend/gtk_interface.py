@@ -20,7 +20,7 @@ try:
     from xml.dom.minidom import parse
     import gobject
     import time
-    # import webkit
+    import webkit
     import GeoIP
     import urllib
     import string
