@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 sys.path.append('/usr/lib/live-installer')
-from installer import InstallerEngine, fstab, fstab_entry, SystemUser #, HostMachine
+from installer import InstallerEngine, Setup, PartitionSetup
 
 try:
     import pygtk
@@ -23,15 +23,13 @@ try:
     # import webkit
     import GeoIP
     import urllib
-    import webkit
     import string
+    import parted
 except Exception, detail:
     print detail
 
 
-import parted, commands
-
-gettext.install("live-installer", "/usr/share/locale")
+gettext.install("live-installer", "/usr/share/linuxmint/locale")
 gtk.gdk.threads_init()
 
 INDEX_PARTITION_PATH=0
@@ -42,6 +40,34 @@ INDEX_PARTITION_MOUNT_AS=4
 INDEX_PARTITION_SIZE=5
 INDEX_PARTITION_FREE_SPACE=6
 INDEX_PARTITION_OBJECT=7
+
+class ProgressDialog:
+	
+	def __init__(self):
+		self.glade = '/usr/share/live-installer/interface.glade'
+		self.dTree = gtk.glade.XML(self.glade, 'progress_window')
+		self.window = self.dTree.get_widget('progress_window')
+		self.progressbar = self.dTree.get_widget('progressbar_operation')
+		self.label = self.dTree.get_widget('label_operation')
+		self.should_pulse = False
+		
+	def show(self, label=None, title=None):
+		def pbar_pulse():
+			if(not self.should_pulse):
+				return False
+			self.progressbar.pulse()
+			return self.should_pulse
+		if(label is not None):
+			self.label.set_markup(label)
+		if(title is not None):
+			self.window.set_title(title)
+		self.should_pulse = True
+		self.window.show_all()
+		gobject.timeout_add(100, pbar_pulse)
+		
+	def hide(self):
+		self.should_pulse = False
+		self.window.hide()	
 
 ''' Handy. Makes message dialogs easy :D '''
 class MessageDialog(object):
@@ -60,15 +86,39 @@ class MessageDialog(object):
         dialog.set_icon_from_file("/usr/share/icons/live-installer.png")
         dialog.run()
         dialog.destroy()
+        
+class QuestionDialog(object):
+    def __init__(self, title, message):
+        self.title = title
+        self.message = message       
+
+    ''' Show me on screen '''
+    def show(self):    
+        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, self.message)
+        dialog.set_title(self.title)
+        dialog.set_position(gtk.WIN_POS_CENTER)
+        dialog.set_icon_from_file("/usr/share/icons/live-installer.png")
+        answer = dialog.run()
+        if answer==gtk.RESPONSE_YES:
+            return_value = True
+        else:
+            return_value = False
+        dialog.destroy()
+        return return_value    
 
 class WizardPage:
 
-    def __init__(self, help_text):
-        self.help_text = help_text        
+    def __init__(self, help_text, icon):
+        self.help_text = help_text    
+        self.icon = icon    
 		
 class InstallerWindow:
 
     def __init__(self, fullscreen=False):
+        
+        #Build the Setup object (where we put all our choices)
+        self.setup = Setup()
+        
         self.resource_dir = '/usr/share/live-installer/'
         #self.glade = 'interface.glade'
         self.glade = os.path.join(self.resource_dir, 'interface.glade')
@@ -78,7 +128,7 @@ class InstallerWindow:
         self.done = False
         self.fail = False
 
-        # here cometh the installer engine
+        # here comes the installer engine
         self.installer = InstallerEngine()
         # the distribution name
         DISTRIBUTION_NAME = self.installer.get_distribution_name()
@@ -91,16 +141,17 @@ class InstallerWindow:
         self.window.connect("destroy", self.quit_cb)
 
         # Wizard pages
-        [self.PAGE_LANGUAGE, self.PAGE_PARTITIONS, self.PAGE_USER, self.PAGE_ADVANCED, self.PAGE_KEYBOARD, self.PAGE_OVERVIEW, self.PAGE_INSTALL, self.PAGE_TIMEZONE] = range(8)
-        self.wizard_pages = range(8)
-        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage(_("Choose your language"))
-        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage(_("Choose your timezone"))
-        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage(_("Choose your keyboard layout"))
-        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage(_("Select where you want to install Linux Mint"))
-        self.wizard_pages[self.PAGE_USER] = WizardPage(_("Please indicate your name and select a username, a password and a hostname"))
-        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage(_("Please review the following advanced options"))
-        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(_("Please review this summary and make sure everything is correct"))
-        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(_("Please wait while Linux Mint is being installed on your computer"))
+        [self.PAGE_LANGUAGE, self.PAGE_PARTITIONS, self.PAGE_USER, self.PAGE_ADVANCED, self.PAGE_KEYBOARD, self.PAGE_OVERVIEW, self.PAGE_INSTALL, self.PAGE_TIMEZONE, self.PAGE_HDD] = range(9)
+        self.wizard_pages = range(9)
+        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage("Choose your language", "locales.png")
+        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage("Choose your timezone", "time.png")
+        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage("Choose your keyboard layout", "keyboard.png")
+        self.wizard_pages[self.PAGE_HDD] = WizardPage("On which hard drive do you want to install Linux Mint?", "hdd.svg")
+        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage("Select where you want to install Linux Mint", "hdd.svg")
+        self.wizard_pages[self.PAGE_USER] = WizardPage("Please indicate your name and select a username, a password and a hostname", "user.png")
+        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage("Please review the following advanced options", "advanced.png")
+        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage("Please review this summary and make sure everything is correct", "summary.png")
+        self.wizard_pages[self.PAGE_INSTALL] = WizardPage("Please wait while Linux Mint is being installed on your computer", "install.png")
         
         # set the button events (wizard_cb)
         self.wTree.get_widget("button_next").connect("clicked", self.wizard_cb, False)
@@ -116,141 +167,121 @@ class InstallerWindow:
         column = gtk.TreeViewColumn("Languages", ren)
         column.add_attribute(ren, "text", 0)
         self.wTree.get_widget("treeview_language_list").append_column(column)
-
-        self.wTree.get_widget("treeview_language_list").connect("cursor-changed", self.cb_change_language)
+        self.wTree.get_widget("treeview_language_list").connect("cursor-changed", self.assign_language)
 
         # build the language list
         self.build_lang_list()
-
         ren = gtk.CellRendererText()
         column = gtk.TreeViewColumn("Timezones", ren)
         column.add_attribute(ren, "text", 0)
         self.wTree.get_widget("treeview_timezones").append_column(column)
-
-        self.wTree.get_widget("treeview_timezones").connect("cursor-changed", self.cb_change_timezone)
+        self.wTree.get_widget("treeview_timezones").connect("cursor-changed", self.assign_timezone)
 
         self.build_timezones()
 
         # disk view
+        ren = gtk.CellRendererText()
+        self.column1 = gtk.TreeViewColumn("Hard drive", ren)
+        self.column1.add_attribute(ren, "text", 0)
+        self.wTree.get_widget("treeview_hdds").append_column(self.column1)
+        self.column2 = gtk.TreeViewColumn("Description", ren)
+        self.column2.add_attribute(ren, "text", 1)
+        self.wTree.get_widget("treeview_hdds").append_column(self.column2)
+        self.wTree.get_widget("treeview_hdds").connect("cursor-changed", self.assign_hdd)
+        self.build_hdds()
+        #self.build_grub_partitions()
+        
         self.wTree.get_widget("button_edit").connect("clicked", self.edit_partitions)
         self.wTree.get_widget("label_edit_partitions").set_label(_("Edit partitions"))
         self.wTree.get_widget("button_refresh").connect("clicked", self.refresh_partitions)
         self.wTree.get_widget("treeview_disks").connect("row_activated", self.assign_partition)
         self.wTree.get_widget("treeview_disks").connect( "button-release-event", self.partitions_popup_menu)
-
+        
         # device
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Device"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_PATH)
-        self.wTree.get_widget("treeview_disks").append_column(column)
+        self.column3 = gtk.TreeViewColumn(_("Device"), ren)
+        self.column3.add_attribute(ren, "markup", INDEX_PARTITION_PATH)
+        self.wTree.get_widget("treeview_disks").append_column(self.column3)
         # Type
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Type"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_TYPE)
-        self.wTree.get_widget("treeview_disks").append_column(column)
+        self.column4 = gtk.TreeViewColumn(_("Type"), ren)
+        self.column4.add_attribute(ren, "markup", INDEX_PARTITION_TYPE)
+        self.wTree.get_widget("treeview_disks").append_column(self.column4)
         # description
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Operating system"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_DESCRIPTION)
-        self.wTree.get_widget("treeview_disks").append_column(column)
-        # format
-        ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Format as"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_FORMAT_AS)        
-        self.wTree.get_widget("treeview_disks").append_column(column)      
+        self.column5 = gtk.TreeViewColumn(_("Operating system"), ren)
+        self.column5.add_attribute(ren, "markup", INDEX_PARTITION_DESCRIPTION)
+        self.wTree.get_widget("treeview_disks").append_column(self.column5)        
         # mount point
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Mount as"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_MOUNT_AS)
-        self.wTree.get_widget("treeview_disks").append_column(column)
+        self.column6 = gtk.TreeViewColumn(_("Mount point"), ren)
+        self.column6.add_attribute(ren, "markup", INDEX_PARTITION_MOUNT_AS)
+        self.wTree.get_widget("treeview_disks").append_column(self.column6)
+        # format
+        ren = gtk.CellRendererText()
+        self.column7 = gtk.TreeViewColumn(_("Format?"), ren)
+        self.column7.add_attribute(ren, "markup", INDEX_PARTITION_FORMAT_AS)        
+        self.wTree.get_widget("treeview_disks").append_column(self.column7)
         # size
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Size (MB)"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_SIZE)
-        self.wTree.get_widget("treeview_disks").append_column(column)
+        self.column8 = gtk.TreeViewColumn(_("Size"), ren)
+        self.column8.add_attribute(ren, "markup", INDEX_PARTITION_SIZE)
+        self.wTree.get_widget("treeview_disks").append_column(self.column8)
         # Used space
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Free space (MB)"), ren)
-        column.add_attribute(ren, "markup", INDEX_PARTITION_FREE_SPACE)
-        self.wTree.get_widget("treeview_disks").append_column(column)
+        self.column9 = gtk.TreeViewColumn(_("Free space"), ren)
+        self.column9.add_attribute(ren, "markup", INDEX_PARTITION_FREE_SPACE)
+        self.wTree.get_widget("treeview_disks").append_column(self.column9)
 
-        # about you
-        self.wTree.get_widget("label_your_name").set_markup("<b>%s</b>" % _("Your full name"))
-        self.wTree.get_widget("label_your_name_help").set_label(_("This will be shown in the About Me application"))
-        self.wTree.get_widget("label_username").set_markup("<b>%s</b>" % _("Your username"))
-        self.wTree.get_widget("label_username_help").set_label(_("This is the name you will use to login to your computer"))
-        self.wTree.get_widget("label_choose_pass").set_markup("<b>%s</b>" % _("Your password"))
-        self.wTree.get_widget("label_pass_help").set_label(_("Please enter your password twice to ensure it is correct"))
-        self.wTree.get_widget("label_hostname").set_markup("<b>%s</b>" % _("Hostname"))
-        self.wTree.get_widget("label_hostname_help").set_label(_("This hostname will be the computers name on the network"))
+        self.wTree.get_widget("entry_your_name").connect("notify::text", self.assign_realname)        
+        self.wTree.get_widget("entry_username").connect("notify::text", self.assign_username)    
+        self.wTree.get_widget("entry_hostname").connect("notify::text", self.assign_hostname)    
 
-        self.wTree.get_widget("entry_your_name").connect("notify::text", self.update_account_fields)
-
-        # try to set the hostname
-        #machine = HostMachine()
-        #model = machine.get_model()
-        #hostname = ""
-        #if(model is not None):
-        #    model = model.replace(" ", "").lower()
-        #    hostname = model + "-"
-        #if(machine.is_laptop()):
-        #    hostname += _("laptop")
-        #else:
-        #    hostname += _("desktop")
-        #self.wTree.get_widget("entry_hostname").set_text(hostname)
-
-        # events for detecting password mismatch..
-        entry1 = self.wTree.get_widget("entry_userpass1")
-        entry2 = self.wTree.get_widget("entry_userpass2")
-        entry1.connect("changed", self.pass_mismatcher)
-        entry2.connect("changed", self.pass_mismatcher)
-
-        # grub
-        self.wTree.get_widget("label_grub").set_markup("<b>%s</b>" % _("Bootloader"))
-        self.wTree.get_widget("checkbutton_grub").set_label(_("Install GRUB"))
-        self.wTree.get_widget("label_grub_help").set_label(_("GRUB is a bootloader used to load the Linux kernel"))
+        # events for detecting password mismatch..        
+        self.wTree.get_widget("entry_userpass1").connect("changed", self.assign_password)
+        self.wTree.get_widget("entry_userpass2").connect("changed", self.assign_password)
 
         # link the checkbutton to the combobox
         grub_check = self.wTree.get_widget("checkbutton_grub")
         grub_box = self.wTree.get_widget("combobox_grub")
-        grub_check.connect("clicked", lambda x: grub_box.set_sensitive(x.get_active()))
+        grub_check.connect("clicked", self.assign_grub_install, grub_box)        
+        grub_box.connect("changed", self.assign_grub_device)
 
         # Install Grub by default
         grub_check.set_active(True)
         grub_box.set_sensitive(True)
-
-        # keyboard page
-        self.wTree.get_widget("label_test_kb").set_label(_("Use this box to test your keyboard layout"))
-        self.wTree.get_widget("label_kb_model").set_label(_("Model"))
         
         # kb models
         cell = gtk.CellRendererText()
         self.wTree.get_widget("combobox_kb_model").pack_start(cell, True)
         self.wTree.get_widget("combobox_kb_model").add_attribute(cell, 'text', 0)        
-        self.wTree.get_widget("combobox_kb_model").connect("changed", self.cb_change_kb_model)
+        self.wTree.get_widget("combobox_kb_model").connect("changed", self.assign_keyboard_model)
 
         # kb layouts
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Layout"), ren)
-        column.add_attribute(ren, "text", 0)
-        self.wTree.get_widget("treeview_layouts").append_column(column)
-        self.wTree.get_widget("treeview_layouts").connect("cursor-changed", self.cb_change_kb_layout)
+        self.column10 = gtk.TreeViewColumn(_("Layout"), ren)
+        self.column10.add_attribute(ren, "text", 0)
+        self.wTree.get_widget("treeview_layouts").append_column(self.column10)
+        self.wTree.get_widget("treeview_layouts").connect("cursor-changed", self.assign_keyboard_layout)
         
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Variant"), ren)
-        column.add_attribute(ren, "text", 0)
-        self.wTree.get_widget("treeview_variants").append_column(column)
-        self.wTree.get_widget("treeview_variants").connect("cursor-changed", self.cb_change_kb_variant)
+        self.column11 = gtk.TreeViewColumn(_("Variant"), ren)
+        self.column11.add_attribute(ren, "text", 0)
+        self.wTree.get_widget("treeview_variants").append_column(self.column11)
+        self.wTree.get_widget("treeview_variants").connect("cursor-changed", self.assign_keyboard_variant)
         
         self.build_kb_lists()
 
         # 'about to install' aka overview
         ren = gtk.CellRendererText()
-        column = gtk.TreeViewColumn(_("Overview"), ren)
-        column.add_attribute(ren, "markup", 0)
-        self.wTree.get_widget("treeview_overview").append_column(column)
+        self.column12 = gtk.TreeViewColumn(_("Overview"), ren)
+        self.column12.add_attribute(ren, "markup", 0)
+        self.wTree.get_widget("treeview_overview").append_column(self.column12)
         # install page
         self.wTree.get_widget("label_install_progress").set_markup("<i>%s</i>" % _("Calculating file indexes..."))
+    
+        #i18n
+        self.i18n()
 
         # build partition list
         self.should_pulse = False
@@ -270,31 +301,87 @@ class InstallerWindow:
             self.window.maximize()
             self.window.fullscreen()        
         
-        # ''' Launch the Slideshow '''
-        # if ("_" in self.locale):
-        #     locale_code = self.locale.split("_")[0]
-        # else:
-        #      locale_code = self.locale
+        #''' Launch the Slideshow '''
+        #if ("_" in self.setup.language):
+        #    locale_code = self.setup.language.split("_")[0]
+        #else:
+        #     locale_code = self.setup.language
         
-        # slideshow_path = "/usr/share/live-installer-slideshow/slides/index.html"
-        # if os.path.exists(slideshow_path):            
-        #     browser = webkit.WebView()
-        #     s = browser.get_settings()
-        #     s.set_property('enable-file-access-from-file-uris', True)
-        #     s.set_property('enable-default-context-menu', False)
-        #     browser.open("file://" + slideshow_path  + "#?locale=" + locale_code)
-        #     self.wTree.get_widget("vbox_install").add(browser)
-        #     self.wTree.get_widget("vbox_install").show_all()            
-                          
+        #slideshow_path = "/usr/share/live-installer-slideshow/slides/index.html"
+        #if os.path.exists(slideshow_path):            
+        #    browser = webkit.WebView()
+        #    s = browser.get_settings()
+        #    s.set_property('enable-file-access-from-file-uris', True)
+        #    s.set_property('enable-default-context-menu', False)
+        #    browser.open("file://" + slideshow_path  + "#?locale=" + locale_code)
+        #    self.wTree.get_widget("vbox_install").add(browser)
+        #    self.wTree.get_widget("vbox_install").show_all()                                                            
+        
+        self.browser = webkit.WebView()
+        s = self.browser.get_settings()
+        s.set_property('enable-file-access-from-file-uris', True)
+        s.set_property('enable-default-context-menu', False)     
+        self.wTree.get_widget("scrolled_partitions").add(self.browser)   
+        
         self.window.show_all()
+        
+    def i18n(self):
+        # about you
+        self.wTree.get_widget("label_your_name").set_markup("<b>%s</b>" % _("Your full name"))
+        self.wTree.get_widget("label_your_name_help").set_label(_("This will be shown in the About Me application"))
+        self.wTree.get_widget("label_username").set_markup("<b>%s</b>" % _("Your username"))
+        self.wTree.get_widget("label_username_help").set_label(_("This is the name you will use to login to your computer"))
+        self.wTree.get_widget("label_choose_pass").set_markup("<b>%s</b>" % _("Your password"))
+        self.wTree.get_widget("label_pass_help").set_label(_("Please enter your password twice to ensure it is correct"))
+        self.wTree.get_widget("label_hostname").set_markup("<b>%s</b>" % _("Hostname"))
+        self.wTree.get_widget("label_hostname_help").set_label(_("This hostname will be the computers name on the network"))
+        
+        # grub
+        self.wTree.get_widget("label_grub").set_markup("<b>%s</b>" % _("Bootloader"))
+        self.wTree.get_widget("checkbutton_grub").set_label(_("Install GRUB"))
+        self.wTree.get_widget("label_grub_help").set_label(_("GRUB is a bootloader used to load the Linux kernel"))
+        
+        # keyboard page
+        self.wTree.get_widget("label_test_kb").set_label(_("Use this box to test your keyboard layout"))
+        self.wTree.get_widget("label_kb_model").set_label(_("Model"))
+        
+        #Installation
+        self.wTree.get_widget("label_install_1").set_label(_("Please wait while the operating system is installed on your computer."))
+        self.wTree.get_widget("label_install_2").set_label(_("The installation should take approximately 10 minutes."))
+        self.wTree.get_widget("label_install_3").set_label(_("We hope you enjoy this new release. Thank you for choosing Linux Mint."))    
+        
+        #Columns
+        self.column1.set_title(_("Hard drive")) 
+        self.column2.set_title(_("Description")) 
+        self.column3.set_title(_("Device")) 
+        self.column4.set_title(_("Type")) 
+        self.column5.set_title(_("Operating system")) 
+        self.column6.set_title(_("Mount point")) 
+        self.column7.set_title(_("Format?")) 
+        self.column8.set_title(_("Size")) 
+        self.column9.set_title(_("Free space")) 
+        self.column10.set_title(_("Layout")) 
+        self.column11.set_title(_("Variant")) 
+        self.column12.set_title(_("Overview")) 
 
-    def update_account_fields(self, entry, prop):
+    def assign_realname(self, entry, prop):
+        self.setup.real_name = entry.props.text
         text = entry.props.text.strip().lower()
         if " " in entry.props.text:
             elements = text.split()
             text = elements[0]
-        self.wTree.get_widget("entry_username").set_text(text)
+        self.setup.username = text
+        self.wTree.get_widget("entry_username").set_text(text)   
+        self.setup.print_setup()    
 
+    def assign_username(self, entry, prop):
+        self.setup.username = entry.props.text
+        self.setup.print_setup()       
+
+    def assign_hostname(self, entry, prop):
+        self.setup.hostname = entry.props.text
+        self.setup.print_setup()
+        
     def quit_cb(self, widget, data=None):
         ''' ask whether we should quit. because touchpads do happen '''
         gtk.main_quit()
@@ -304,21 +391,19 @@ class InstallerWindow:
         model, iter = self.wTree.get_widget("treeview_disks").get_selection().get_selected()
         if iter is not None:
             row = model[iter]
-            partition = row[INDEX_PARTITION_OBJECT]
-            if not partition.real_type == parted.PARTITION_EXTENDED and not partition.partition.number == -1:                       
-                dlg = PartitionDialog(row[INDEX_PARTITION_PATH], row[INDEX_PARTITION_MOUNT_AS], row[INDEX_PARTITION_FORMAT_AS], row[INDEX_PARTITION_DESCRIPTION])
-                (mount_as, format_as) = dlg.show()
-                # now set the model as shown..                
-                row[INDEX_PARTITION_MOUNT_AS] = mount_as
-                row[INDEX_PARTITION_FORMAT_AS] = format_as                
-                model[iter] = row                
+            partition = row[INDEX_PARTITION_OBJECT]            
+            if not partition.partition.type == parted.PARTITION_EXTENDED and not partition.partition.number == -1:            
+                dlg = PartitionDialog(row[INDEX_PARTITION_PATH], row[INDEX_PARTITION_MOUNT_AS], row[INDEX_PARTITION_FORMAT_AS], row[INDEX_PARTITION_TYPE])
+                (mount_as, format_as) = dlg.show()                
+                self.assign_mount_point(partition, mount_as, format_as)
                 
     def partitions_popup_menu( self, widget, event ):
         if event.button == 3:
             model, iter = self.wTree.get_widget("treeview_disks").get_selection().get_selected()
             if iter is not None:
                 partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
-                if not partition.real_type == parted.PARTITION_EXTENDED and not partition.partition.number == -1:
+                partition_type = model.get_value(iter, INDEX_PARTITION_TYPE)
+                if not partition.partition.type == parted.PARTITION_EXTENDED and not partition.partition.number == -1 and "swap" not in partition_type:
                     menu = gtk.Menu()
                     menuItem = gtk.MenuItem(_("Edit"))
                     menuItem.connect( "activate", self.assign_partition, partition)
@@ -326,48 +411,48 @@ class InstallerWindow:
                     menuItem = gtk.SeparatorMenuItem()
                     menu.append(menuItem)
                     menuItem = gtk.MenuItem(_("Assign to /"))
-                    menuItem.connect( "activate", self.assignRoot, partition)
+                    menuItem.connect( "activate", self.assign_mount_point_context_menu_wrapper, partition, "/", "ext4")
                     menu.append(menuItem)
                     menuItem = gtk.MenuItem(_("Assign to /home"))
-                    menuItem.connect( "activate", self.assignHome, partition)
+                    menuItem.connect( "activate", self.assign_mount_point_context_menu_wrapper, partition, "/home", "")
                     menu.append(menuItem)
                     menu.show_all()
                     menu.popup( None, None, None, event.button, event.time )
 
-    def assignRoot(self, menu, partition):
-        model = self.wTree.get_widget("treeview_disks").get_model()
-        iter = model.get_iter_first()
-        while iter is not None:
-            iter_partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
-            if iter_partition == partition:
-                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "/") # add / assignment
-                model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "ext4") # format                
-            else:
-                mountpoint = model.get_value(iter, INDEX_PARTITION_MOUNT_AS)
-                if mountpoint == "/":
-                    model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "") # remove / assignment
-                    model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                   
-            iter = model.iter_next(iter)
+    def assign_mount_point_context_menu_wrapper(self, menu, partition, mount_point, filesystem):
+        self.assign_mount_point(partition, mount_point, filesystem)
 
-    def assignHome(self, menu, partition):
+    def assign_mount_point(self, partition, mount_point, filesystem):
+        
+        #Assign it in the treeview
         model = self.wTree.get_widget("treeview_disks").get_model()
         iter = model.get_iter_first()
         while iter is not None:
             iter_partition = model.get_value(iter, INDEX_PARTITION_OBJECT)
             if iter_partition == partition:
-                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "/home") # add /home assignment
-                model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                
+                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, mount_point)         
+                model.set_value(iter, INDEX_PARTITION_FORMAT_AS, filesystem)
             else:
                 mountpoint = model.get_value(iter, INDEX_PARTITION_MOUNT_AS)
-                if mountpoint == "/home":
-                    model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "") # remove /home assignment
-                    model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "") # don't format                    
+                if mountpoint == mount_point:
+                    model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "")
+                    model.set_value(iter, INDEX_PARTITION_FORMAT_AS, "")
             iter = model.iter_next(iter)
+        #Assign it in our setup
+        for apartition in self.setup.partitions:
+            if (apartition.partition.path == partition.partition.path):
+                apartition.mount_as = mount_point
+                apartition.format_as = filesystem
+            else:                
+                if apartition.mount_as == mount_point:
+                    apartition.mount_as = None
+                    apartition.format_as = None
+        self.setup.print_setup()
+                
 
     def refresh_partitions(self, widget, data=None):
         ''' refresh the partitions ... '''
-        thr = threading.Thread(name="live-installer-disk-search", group=None, target=self.build_partitions, args=(), kwargs={})
-        thr.start()
+        self.build_partitions()
 
     def edit_partitions(self, widget, data=None):
         ''' edit the partitions ... '''
@@ -497,68 +582,137 @@ class InstallerWindow:
         treeview = self.wTree.get_widget("treeview_timezones")
         treeview.set_model(model)
         treeview.set_search_column(0)
+        
+    def build_hdds(self):
+        self.setup.disks = []
+        model = gtk.ListStore(str, str)            
+        inxi = subprocess.Popen("inxi -c0 -D", shell=True, stdout=subprocess.PIPE)      
+        for line in inxi.stdout:
+            line = line.rstrip("\r\n")
+            if(line.startswith("Disks:")):
+                line = line.replace("Disks:", "")            
+            sections = line.split(":")
+            for section in sections:
+                section = section.strip()
+                if("/dev/" in section):                    
+                    elements = section.split()
+                    for element in elements:
+                        if "/dev/" in element: 
+                            self.setup.disks.append(element)
+                            description = section.replace(element, "").strip()
+                            iter = model.append([element, description]);
+                
+        self.wTree.get_widget("treeview_hdds").set_model(model)
+        
+        if(len(self.setup.disks) > 0):
+            # select the first HDD
+            treeview = self.wTree.get_widget("treeview_hdds")            
+            column = treeview.get_column(0)
+            path = model.get_path(model.get_iter_first())
+            treeview.set_cursor(path, focus_column=column)
+            treeview.scroll_to_cell(path, column=column)
+            self.setup.target_disk = model.get_value(model.get_iter_first(), 0) 
+    
+    def build_grub_partitions(self):
+        grub_model = gtk.ListStore(str)
+        # Add disks
+        for disk in self.setup.disks:
+            grub_model.append([disk])
+        # Add partitions
+        partitions = commands.getoutput("fdisk -l | grep ^/dev/").split("\n")
+        for partition in partitions:
+            try:
+                partition = partition.split()[0].strip()
+                if partition.startswith("/dev/"):
+                    grub_model.append([partition])
+            except Exception, detail:
+                print detail
+        self.wTree.get_widget("combobox_grub").set_model(grub_model)
+        self.wTree.get_widget("combobox_grub").set_active(0)
   
-    def build_partitions(self):
-        gtk.gdk.threads_enter()
+    def build_partitions(self):        
         self.window.set_sensitive(False)
         # "busy" cursor.
         cursor = gtk.gdk.Cursor(gtk.gdk.WATCH)
-        self.window.window.set_cursor(cursor)
-        from progress import ProgressDialog
-        dialog = ProgressDialog()
-        dialog.show(title=_("Installer"), label=_("Scanning for partitions"))
-        gtk.gdk.threads_leave()
-        from screen import Partition
+        self.window.window.set_cursor(cursor)        
+        
         os.popen('mkdir -p /tmp/live-installer/tmpmount')
         
-        try:
-        
-            disks = [] 
-            
-            inxi = subprocess.Popen("inxi -c0 -D", shell=True, stdout=subprocess.PIPE)        
-            for line in inxi.stdout:
-                line = line.rstrip("\r\n")
-                if(line.startswith("Disks:")):
-                    line = line.replace("Disks:", "")            
-                sections = line.split(":")
-                for section in sections:
-                    section = section.strip()
-                    if("/dev/" in section):                    
-                        elements = section.split()
-                        for element in elements:
-                            if "/dev/" in element:
-                                disks.append(element)                                
-                                            
-            grub_model = gtk.ListStore(str)
-            partitions = []
+        try:                                                                                            
+            #grub_model = gtk.ListStore(str)
+            self.setup.partitions = []
             
             html_partitions = ""        
             model = gtk.ListStore(str,str,str,str,str,str,str, object, bool, str, str, bool)
             model2 = gtk.ListStore(str)
             
-            for disk in disks:                 
-                path =  disk # i.e. /dev/sda
-                grub_model.append([path])
-                device = parted.getDevice(path)
-                disk = parted.Disk(device)
+            swap_found = False
+            
+            if self.setup.target_disk is not None:
+                path =  self.setup.target_disk # i.e. /dev/sda
+                #grub_model.append([path])
+                device = parted.getDevice(path)                
+                try:
+                    disk = parted.Disk(device)
+                except Exception:
+                    dialog = QuestionDialog(_("Installation Tool"), _("No partition table was found on the hard drive. Do you want the installer to create a set of partitions for you? Note: This will erase any data present on the disk."))
+                    if (dialog.show()):
+                        # Create a default partition set up                        
+                        disk = parted.freshDisk(device, 'msdos')
+                        disk.commit()
+
+                        #Swap
+                        regions = disk.getFreeSpaceRegions()
+                        if len(regions) > 0:
+                            region = regions[-1]    
+                            ram_size = int(commands.getoutput("cat /proc/meminfo | grep MemTotal | awk {'print $2'}")) # in KiB
+                            post_mbr_gap = parted.sizeToSectors(1, "MiB", device.sectorSize) # Grub2 requires a post-MBR gap
+                            start = post_mbr_gap
+                            num_sectors = parted.sizeToSectors(ram_size, "KiB", device.sectorSize)
+                            num_sectors = int(float(num_sectors) * 1.5) # Swap is 1.5 times bigger than RAM
+                            end = start + num_sectors
+                            cylinder = device.endSectorToCylinder(end)
+                            end = device.endCylinderToSector(cylinder)
+                            geometry = parted.Geometry(device=device, start=start, end=end)
+                            if end < region.length:
+                                partition = parted.Partition(disk=disk, type=parted.PARTITION_NORMAL, geometry=geometry)
+                                constraint = parted.Constraint(exactGeom=geometry)
+                                disk.addPartition(partition=partition, constraint=constraint)
+                                disk.commit()
+                                os.system("mkswap %s" % partition.path)                                
+
+                        #Root
+                        regions = disk.getFreeSpaceRegions()
+                        if len(regions) > 0:
+                            region = regions[-1]
+                            partition = parted.Partition(disk=disk, type=parted.PARTITION_NORMAL, geometry=region)
+                            constraint = parted.Constraint(exactGeom=region)
+                            disk.addPartition(partition=partition, constraint=constraint)
+                            disk.commit()                            
+                            os.system("mkfs.ext4 %s" % partition.path)
+                       
+                        self.build_partitions()
+                        return
+                    else:
+                        # Do nothing... just get out of here..
+                        raise
                 partition = disk.getFirstPartition()
-                last_added_partition = Partition(partition)
-                partitions.append(last_added_partition)
+                last_added_partition = PartitionSetup(partition)
+                #self.setup.partitions.append(last_added_partition)
                 partition = partition.nextPartition()
                 html_partitions = html_partitions + "<table width='100%'><tr>"
                 while (partition is not None):
                     if last_added_partition.partition.number == -1 and partition.number == -1:
                         last_added_partition.add_partition(partition)
-                    else:
-                        last_added_partition = Partition(partition)
-                        partitions.append(last_added_partition)
-                
+                    else:                        
+                        last_added_partition = PartitionSetup(partition)
+                                        
                         if "swap" in last_added_partition.type:
-                            last_added_partition.type = _("swap")
+                            last_added_partition.type = "swap"                                                            
 
                         if partition.number != -1 and "swap" not in last_added_partition.type and partition.type != parted.PARTITION_EXTENDED:
                             
-                            grub_model.append([partition.path])
+                            #grub_model.append([partition.path])
 
                             #Umount temp folder
                             if ('/tmp/live-installer/tmpmount' in commands.getoutput('mount')):
@@ -625,7 +779,7 @@ class InstallerWindow:
                                 os.popen('umount /tmp/live-installer/tmpmount')
                                 
                     if last_added_partition.size > 1.0:
-                        if last_added_partition.real_type == parted.PARTITION_LOGICAL:
+                        if last_added_partition.partition.type == parted.PARTITION_LOGICAL:
                             display_name = "  " + last_added_partition.name
                         else:
                             display_name = last_added_partition.name
@@ -633,7 +787,7 @@ class InstallerWindow:
                         iter = model.append([display_name, last_added_partition.type, last_added_partition.description, "", "", '%.0f' % round(last_added_partition.size, 0), last_added_partition.free_space, last_added_partition, False, last_added_partition.start, last_added_partition.end, False]);
                         if last_added_partition.partition.number == -1:                     
                             model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='#a9a9a9'>%s</span>" % last_added_partition.type)                                    
-                        elif last_added_partition.real_type == parted.PARTITION_EXTENDED:                    
+                        elif last_added_partition.partition.type == parted.PARTITION_EXTENDED:                    
                             model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='#a9a9a9'>%s</span>" % _("Extended"))  
                         else:                                        
                             if last_added_partition.type == "ntfs":
@@ -646,6 +800,8 @@ class InstallerWindow:
                                 color = "#7590ae"
                             elif last_added_partition.type in ["linux-swap", "swap"]:
                                 color = "#c1665a"
+                                last_added_partition.mount_as = "swap"
+                                model.set_value(iter, INDEX_PARTITION_MOUNT_AS, "swap")
                             else:
                                 color = "#a9a9a9"
                             model.set_value(iter, INDEX_PARTITION_TYPE, "<span foreground='%s'>%s</span>" % (color, last_added_partition.type))                                            
@@ -672,16 +828,14 @@ class InstallerWindow:
                                 subs['usage'] = last_added_partition.used_space.strip()
                             html_partition = string.Template(html_partition).safe_substitute(subs)                     
                             html_partitions = html_partitions + html_partition
+                            self.setup.partitions.append(last_added_partition)
                             
                     partition = partition.nextPartition()
                 html_partitions = html_partitions + "</tr></table>"
-            self.wTree.get_widget("combobox_grub").set_model(grub_model)
-            self.wTree.get_widget("combobox_grub").set_active(0)
-            gtk.gdk.threads_enter()
-            
-            
-            import tempfile
-            
+            #self.wTree.get_widget("combobox_grub").set_model(grub_model)
+            #self.wTree.get_widget("combobox_grub").set_active(0)
+                        
+            import tempfile            
             html_header = "<html><head><style>body {background-color:#d6d6d6;} \
             .partition{position:relative; width:100%; float: left; background: white;} \
             .partition-cell{ position:relative; margin: 2px 5px 2px 0; padding: 1px; float: left; background: white;} \
@@ -694,31 +848,18 @@ class InstallerWindow:
             f = tempfile.NamedTemporaryFile(delete=False)
             f.write(html)
             f.close()  
+                                   
+            self.browser.open(f.name)            
+            #browser.load_html_string(html, "file://")                 
+            self.wTree.get_widget("scrolled_partitions").show_all()                                                                        
+            self.wTree.get_widget("treeview_disks").set_model(model)                                
             
-            browser = webkit.WebView()
-            s = browser.get_settings()
-            s.set_property('enable-file-access-from-file-uris', True)
-            s.set_property('enable-default-context-menu', False)            
-            browser.open(f.name)            
-            #browser.load_html_string(html, "file://")     
-            self.wTree.get_widget("scrolled_partitions").add(browser)
-            self.wTree.get_widget("scrolled_partitions").show_all()    
-                                                         
             
-            gtk.gdk.threads_leave()
-            
-            gtk.gdk.threads_enter()
-            self.wTree.get_widget("treeview_disks").set_model(model)
-            gtk.gdk.threads_leave()
-            dialog.hide()
-            gtk.gdk.threads_enter()
-            self.window.set_sensitive(True)
-            self.window.window.set_cursor(None)
-            gtk.gdk.threads_leave()
         except Exception, detail:
-            print detail
-                                      
+            print detail  
                 
+        self.window.set_sensitive(True)
+        self.window.window.set_cursor(None)        
         
 
     def build_kb_lists(self):
@@ -735,13 +876,13 @@ class InstallerWindow:
             if("xkb_symbols" in line):
                 # decipher the layout in use
                 section = line.split("\"")[1] # split by the " mark
-                self.keyboard_layout = section.split("+")[1]
+                self.setup.keyboard_layout = section.split("+")[1]
             if("xkb_geometry" in line):
                 first_bracket = line.index("(") +1
                 substr = line[first_bracket:]
                 last_bracket = substr.index(")")
                 substr = substr[0:last_bracket]
-                self.keyboard_geom = substr
+                keyboard_geom = substr
         p.poll()
 
         xml_file = '/usr/share/X11/xkb/rules/xorg.xml'
@@ -767,7 +908,7 @@ class InstallerWindow:
             #vendor = conf.getElementsByTagName('vendor')[0] # presently unused..
             iter_model = model_models.append([self.getText(desc.childNodes), self.getText(name.childNodes)])
             item = self.getText(name.childNodes)
-            if(item == self.keyboard_geom):
+            if(item == keyboard_geom):
                 set_keyboard_model = iter_model
         root_layouts = root.getElementsByTagName('layoutList')[0]
         for element in root_layouts.getElementsByTagName('layout'):
@@ -776,7 +917,7 @@ class InstallerWindow:
             desc = conf.getElementsByTagName('description')[0]
             iter_layout = model_layouts.append([self.getText(desc.childNodes), self.getText(name.childNodes)])
             item = self.getText(name.childNodes)
-            if(item == self.keyboard_layout):
+            if(item == self.setup.keyboard_layout):
                 set_keyboard_layout = iter_layout
         # now set the model        
         self.wTree.get_widget("combobox_kb_model").set_model(model_models)
@@ -808,7 +949,7 @@ class InstallerWindow:
             if("xkb_symbols" in line):
                 # decipher the layout in use
                 section = line.split("\"")[1] # split by the " mark
-                self.keyboard_layout = section.split("+")[1]
+                self.setup.keyboard_layout = section.split("+")[1]
         p.poll()
 
         xml_file = '/usr/share/X11/xkb/rules/xorg.xml'      
@@ -824,7 +965,7 @@ class InstallerWindow:
             conf = layout.getElementsByTagName('configItem')[0]
             layout_name = self.getText(conf.getElementsByTagName('name')[0].childNodes)            
             layout_description = self.getText(conf.getElementsByTagName('description')[0].childNodes)            
-            if (layout_name == self.keyboard_layout):
+            if (layout_name == self.setup.keyboard_layout):
                 iter_variant = model_variants.append([layout_description, None])  
                 variants_list = layout.getElementsByTagName('variantList')
                 if len(variants_list) > 0:
@@ -852,8 +993,9 @@ class InstallerWindow:
             if node.nodeType == node.TEXT_NODE:
                 rc.append(node.data)
         return ''.join(rc)
+    
 
-    def cb_change_language(self, treeview, data=None):
+    def assign_language(self, treeview, data=None):
         ''' Called whenever someone updates the language '''
         model = treeview.get_model()
         active = treeview.get_selection().get_selected_rows()
@@ -863,9 +1005,33 @@ class InstallerWindow:
         if(active is None):
             return
         row = model[active]
-        self.locale = row[1]
+        self.setup.language = row[1]
+        self.setup.print_setup()
+        try:            
+            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=[self.setup.language])
+            self.translation.install()
+        except Exception, detail:
+            print "No translation found, switching back to English"
+            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=['en'])
+            self.translation.install()        
+        try:
+            self.i18n()
+        except:
+            pass # Best effort. Fails the first time as self.column1 doesn't exist yet.
 
-    def cb_change_timezone(self, treeview, data=None):
+    def assign_hdd(self, treeview, data=None):
+        ''' Called whenever someone updates the HDD '''
+        model = treeview.get_model()
+        active = treeview.get_selection().get_selected_rows()
+        if(len(active) < 1):
+            return
+        active = active[1][0]
+        if(active is None):
+            return
+        row = model[active]
+        self.setup.target_disk = row[0]        
+
+    def assign_timezone(self, treeview, data=None):
         ''' Called whenever someone updates the timezone '''
         model = treeview.get_model()
         active = treeview.get_selection().get_selected_rows()
@@ -875,20 +1041,38 @@ class InstallerWindow:
         if(active is None):
             return
         row = model[active]
-        self.timezone = row[0]
-        self.timezone_code = row[1]
-           
-    def cb_change_kb_model(self, combobox, data=None):
+        self.setup.timezone = row[0]
+        self.setup.timezone_code = row[1]
+    
+    def assign_grub_install(self, checkbox, grub_box, data=None):
+        grub_box.set_sensitive(checkbox.get_active())
+        if checkbox.get_active():
+            self.assign_grub_device(grub_box)
+        else:
+            self.setup.grub_device = None
+        self.setup.print_setup()    
+
+    def assign_grub_device(self, combobox, data=None):
+        ''' Called whenever someone updates the grub device '''
+        model = combobox.get_model()
+        active = combobox.get_active()
+        if(active > -1):
+            row = model[active]            
+            self.setup.grub_device = row[0]  
+        self.setup.print_setup()
+       
+    def assign_keyboard_model(self, combobox, data=None):
         ''' Called whenever someone updates the keyboard model '''
         model = combobox.get_model()
         active = combobox.get_active()
         if(active > -1):
             row = model[active]
             os.system("setxkbmap -model %s" % row[1])
-            self.keyboard_model = row[1]
-            self.keyboard_model_desc = row[0]
+            self.setup.keyboard_model = row[1]
+            self.setup.keyboard_model_description = row[0]
+        self.setup.print_setup()
 
-    def cb_change_kb_layout(self, treeview, data=None):
+    def assign_keyboard_layout(self, treeview, data=None):
         ''' Called whenever someone updates the keyboard layout '''
         model = treeview.get_model()
         active = treeview.get_selection().get_selected_rows()
@@ -899,11 +1083,12 @@ class InstallerWindow:
             return
         row = model[active]
         os.system("setxkbmap -layout %s" % row[1])
-        self.keyboard_layout = row[1]
-        self.keyboard_layout_desc = row[0]
+        self.setup.keyboard_layout = row[1]
+        self.setup.keyboard_layout_description = row[0]
         self.build_kb_variant_lists()
-        
-    def cb_change_kb_variant(self, treeview, data=None):
+        self.setup.print_setup()
+
+    def assign_keyboard_variant(self, treeview, data=None):
         ''' Called whenever someone updates the keyboard layout '''
         model = treeview.get_model()
         active = treeview.get_selection().get_selected_rows()
@@ -914,39 +1099,36 @@ class InstallerWindow:
             return
         row = model[active]
         if (row[1] is None):
-            os.system("setxkbmap -layout %s" % self.keyboard_layout)
+            os.system("setxkbmap -layout %s" % self.setup.keyboard_layout)
         else:
             os.system("setxkbmap -variant %s" % row[1])
-        self.keyboard_variant = row[1]
-        self.keyboard_variant_desc = row[0]
+        self.setup.keyboard_variant = row[1]
+        self.setup.keyboard_variant_description = row[0]
+        self.setup.print_setup()
 
-    def pass_mismatcher(self, widget):
+    def assign_password(self, widget):
         ''' Someone typed into the entry '''
-        w = self.wTree.get_widget("entry_userpass1")
-        w2 = self.wTree.get_widget("entry_userpass2")
-        txt1 = w.get_text()
-        txt2 = w2.get_text()
-        if(txt1 == "" and txt2 == ""):
+        self.setup.password1 = self.wTree.get_widget("entry_userpass1").get_text()
+        self.setup.password2 = self.wTree.get_widget("entry_userpass2").get_text()        
+        if(self.setup.password1 == "" and self.setup.password2 == ""):
             self.wTree.get_widget("image_mismatch").hide()
             self.wTree.get_widget("label_mismatch").hide()
         else:
             self.wTree.get_widget("image_mismatch").show()
             self.wTree.get_widget("label_mismatch").show()
-        if(txt1 != txt2):
-            img = self.wTree.get_widget("image_mismatch")
-            img.set_from_stock(gtk.STOCK_NO, gtk.ICON_SIZE_BUTTON)
-            label = self.wTree.get_widget("label_mismatch")
-            label.set_label(_("Passwords do not match"))
+        if(self.setup.password1 != self.setup.password2):
+            self.wTree.get_widget("image_mismatch").set_from_stock(gtk.STOCK_NO, gtk.ICON_SIZE_BUTTON)            
+            self.wTree.get_widget("label_mismatch").set_label(_("Passwords do not match"))            
         else:
-            img = self.wTree.get_widget("image_mismatch")
-            img.set_from_stock(gtk.STOCK_OK, gtk.ICON_SIZE_BUTTON)
-            label = self.wTree.get_widget("label_mismatch")
-            label.set_label(_("Passwords match"))
-
+            self.wTree.get_widget("image_mismatch").set_from_stock(gtk.STOCK_OK, gtk.ICON_SIZE_BUTTON)            
+            self.wTree.get_widget("label_mismatch").set_label(_("Passwords match"))                    
+        self.setup.print_setup()
+        
     def activate_page(self, index):
-        self.wTree.get_widget("help_label").set_markup("<big><b>%s</b></big>" % self.wizard_pages[index].help_text)
+        help_text = _(self.wizard_pages[index].help_text)        
+        self.wTree.get_widget("help_label").set_markup("<big><b>%s</b></big>" % help_text)
+        self.wTree.get_widget("help_icon").set_from_file("/usr/share/live-installer/icons/%s" % self.wizard_pages[index].icon)
         self.wTree.get_widget("notebook1").set_current_page(index)
-
 
     def wizard_cb(self, widget, goback, data=None):
         ''' wizard buttons '''
@@ -956,10 +1138,10 @@ class InstallerWindow:
         # check each page for errors
         if(not goback):
             if(sel == self.PAGE_LANGUAGE):
-                if ("_" in self.locale):
-                    country_code = self.locale.split("_")[1]
+                if ("_" in self.setup.language):
+                    country_code = self.setup.language.split("_")[1]
                 else:
-                    country_code = self.locale
+                    country_code = self.setup.language
                 treeview = self.wTree.get_widget("treeview_timezones")
                 model = treeview.get_model()
                 iter = model.get_iter_first()
@@ -974,10 +1156,10 @@ class InstallerWindow:
                     iter = model.iter_next(iter)
                 self.activate_page(self.PAGE_TIMEZONE)
             elif (sel == self.PAGE_TIMEZONE):
-                if ("_" in self.locale):
-                    country_code = self.locale.split("_")[1]
+                if ("_" in self.setup.language):
+                    country_code = self.setup.language.split("_")[1]
                 else:
-                    country_code = self.locale
+                    country_code = self.setup.language
                 treeview = self.wTree.get_widget("treeview_layouts")
                 model = treeview.get_model()
                 iter = model.get_iter_first()                
@@ -992,19 +1174,22 @@ class InstallerWindow:
                     iter = model.iter_next(iter)
                 self.activate_page(self.PAGE_KEYBOARD)
             elif(sel == self.PAGE_KEYBOARD):
+                if len(self.setup.disks) > 1:
+                    self.activate_page(self.PAGE_HDD)                
+                else:
+                    self.activate_page(self.PAGE_PARTITIONS)                
+                    self.build_partitions()                    
+            elif(sel == self.PAGE_HDD):
                 self.activate_page(self.PAGE_PARTITIONS)
-                thr = threading.Thread(name="live-installer-disk-search", group=None, target=self.build_partitions, args=(), kwargs={})
-                thr.start()                
+                self.build_partitions()
             elif(sel == self.PAGE_PARTITIONS):                
                 model = self.wTree.get_widget("treeview_disks").get_model()
                 error = True
                 errorMessage = _("Please select a root (/) partition before proceeding")
-                for row in model:
-                    mountpoint = row[3]
-                    if(mountpoint == "/"):
-                        error = False
-                        format = row[2]
-                        if format is None or format == "":
+                for partition in self.setup.partitions:                    
+                    if(partition.mount_as == "/"):
+                        error = False                        
+                        if partition.format_as is None or partition.format_as == "":
                             error = True
                             errorMessage = _("Please indicate a filesystem to format the root (/) partition before proceeding")                        
                 if(error):
@@ -1014,46 +1199,45 @@ class InstallerWindow:
             elif(sel == self.PAGE_USER):
                 errorFound = False
                 errorMessage = ""
-                
-                username = self.wTree.get_widget("entry_username").get_text()
-                password1 = self.wTree.get_widget("entry_userpass1").get_text()
-                password2 = self.wTree.get_widget("entry_userpass2").get_text()
-                hostname = self.wTree.get_widget("entry_hostname").get_text()
-                
-                if(username == ""):
+                                
+                if(self.setup.real_name is None or self.setup.real_name == ""):
                     errorFound = True
-                    errorMessage = _("Please provide a username")
-                elif(password1 == ""):
+                    errorMessage = _("Please provide your full name")
+                elif(self.setup.username is None or self.setup.username == ""):
+                    errorFound = True
+                    errorMessage = _("Please provide a username")                
+                elif(self.setup.password1 is None or self.setup.password1 == ""):
                     errorFound = True
                     errorMessage = _("Please provide a password for your user account")
-                elif(password1 != password2):
+                elif(self.setup.password1 != self.setup.password2):
                     errorFound = True
                     errorMessage = _("Your passwords do not match")
-                elif(hostname == ""):
+                elif(self.setup.hostname is None or self.setup.hostname == ""):
                     errorFound = True
                     errorMessage = _("Please provide a hostname")
-
-                for char in username:
-                    if(char.isupper()):
-                        errorFound = True
-                        errorMessage = _("Your username must be lower case")
-                        break
-                    elif(char.isspace()):
-                        errorFound = True
-                        errorMessage = _("Your username may not contain whitespace")
-                
-                for char in hostname:
-                    if(char.isupper()):
-                        errorFound = True
-                        errorMessage = _("Your hostname must be lower case")
-                        break
-                    elif(char.isspace()):
-                        errorFound = True
-                        errorMessage = _("Your hostname may not contain whitespace")
+                else:
+                    for char in self.setup.username:
+                        if(char.isupper()):
+                            errorFound = True
+                            errorMessage = _("Your username must be lower case")
+                            break
+                        elif(char.isspace()):
+                            errorFound = True
+                            errorMessage = _("Your username may not contain whitespace")
+                    
+                    for char in self.setup.hostname:
+                        if(char.isupper()):
+                            errorFound = True
+                            errorMessage = _("Your hostname must be lower case")
+                            break
+                        elif(char.isspace()):
+                            errorFound = True
+                            errorMessage = _("Your hostname may not contain whitespace")
                     
                 if (errorFound):
                     MessageDialog(_("Installation Tool"), errorMessage, gtk.MESSAGE_WARNING).show()
                 else:
+                     self.build_grub_partitions()
                      self.activate_page(self.PAGE_ADVANCED)
             elif(sel == self.PAGE_ADVANCED):
                 self.activate_page(self.PAGE_OVERVIEW)
@@ -1076,6 +1260,8 @@ class InstallerWindow:
             elif(sel == self.PAGE_USER):
                 self.activate_page(self.PAGE_PARTITIONS)                
             elif(sel == self.PAGE_PARTITIONS):
+                self.activate_page(self.PAGE_HDD)
+            elif(sel == self.PAGE_HDD):
                 self.activate_page(self.PAGE_KEYBOARD)
             elif(sel == self.PAGE_KEYBOARD):
                 self.activate_page(self.PAGE_TIMEZONE)
@@ -1085,118 +1271,57 @@ class InstallerWindow:
 
     def show_overview(self):
         ''' build the summary page '''
-        model = gtk.TreeStore(str)
-        
-        print " ## OVERVIEW "
-
+        model = gtk.TreeStore(str)        
         top = model.append(None)
         model.set(top, 0, _("Localization"))
         iter = model.append(top)
-        model.set(iter, 0, _("Language: ") + "<b>%s</b>" % self.locale)
-        print " Language: %s " % self.locale
+        model.set(iter, 0, _("Language: ") + "<b>%s</b>" % self.setup.language)        
         iter = model.append(top)
-        model.set(iter, 0, _("Timezone: ") + "<b>%s</b>" % self.timezone)
-        print " Timezone: %s " % self.timezone
+        model.set(iter, 0, _("Timezone: ") + "<b>%s</b>" % self.setup.timezone)        
         iter = model.append(top)
-        model.set(iter, 0, _("Keyboard layout: ") + "<b>%s</b>" % self.keyboard_layout_desc)
-        print " Keyboard layout: %s " % self.keyboard_layout_desc
-        iter = model.append(top)
-        model.set(iter, 0, _("Keyboard model: ") + "<b>%s</b>" % self.keyboard_model_desc)
-        print " Keyboard model: %s " % self.keyboard_model_desc
-
+        if (self.setup.keyboard_variant_description is None):
+            model.set(iter, 0, _("Keyboard layout: ") + "<b>%s - %s</b>" % (self.setup.keyboard_model_description, self.setup.keyboard_layout_description))       
+        else:
+            model.set(iter, 0, _("Keyboard layout: ") + "<b>%s - %s (%s)</b>" % (self.setup.keyboard_model_description, self.setup.keyboard_layout_description, self.setup.keyboard_variant_description))
         top = model.append(None)
-        model.set(top, 0, _("User settings"))
-        username = self.wTree.get_widget("entry_username").get_text()
-        realname = self.wTree.get_widget("entry_your_name").get_text()
+        model.set(top, 0, _("User settings"))       
         iter = model.append(top)
-        model.set(iter, 0, _("Real name: ") + "<b>%s</b>" % realname)
-        print " Real name: %s " % realname
+        model.set(iter, 0, _("Real name: ") + "<b>%s</b>" % self.setup.real_name)        
         iter = model.append(top)
-        model.set(iter, 0, _("Username: ") + "<b>%s</b>" % username)
-        print " Username: %s " % username
-
+        model.set(iter, 0, _("Username: ") + "<b>%s</b>" % self.setup.username)
         top = model.append(None)
         model.set(top, 0, _("System settings"))
         iter = model.append(top)
-        model.set(iter, 0, _("Hostname: ") + "<b>%s</b>" % self.wTree.get_widget("entry_hostname").get_text())
-        print " Hostname: %s " % self.wTree.get_widget("entry_hostname").get_text()
-
-        install_grub = self.wTree.get_widget("checkbutton_grub").get_active()
-        grub_box = self.wTree.get_widget("combobox_grub")
-        grub_active = grub_box.get_active()
-        grub_model = grub_box.get_model()
+        model.set(iter, 0, _("Hostname: ") + "<b>%s</b>" % self.setup.hostname)       
         iter = model.append(top)
-        if(install_grub):
-            model.set(iter, 0, _("Install bootloader in %s") % ("<b>%s</b>" % grub_model[grub_active][0]))
-            print " Install bootloader in %s" % grub_model[grub_active][0]
+        if(self.setup.grub_device is not None):
+            model.set(iter, 0, _("Install bootloader in %s") % ("<b>%s</b>" % self.setup.grub_device))
         else:
             model.set(iter, 0, _("Do not install bootloader"))
-            print " Do not install bootloader"
-
         top = model.append(None)
-        model.set(top, 0, _("Filesystem operations"))
-        disks = self.wTree.get_widget("treeview_disks").get_model()
-        for item in disks:
-            if(item[2] is not None and item[2] is not ""):
+        model.set(top, 0, _("Filesystem operations"))        
+        for partition in self.setup.partitions:
+            if(partition.format_as is not None and partition.format_as != ""):
                 # format it
                 iter = model.append(top)
-                model.set(iter, 0, "<b>%s</b>" % (_("Format %s (%s) as %s") % (item[0], item[4], item[2])))
-                print " Format %s (%s) as %s" % (item[10].name, item[4], item[2])
-        for item in disks:
-            if(item[3] is not None and item[3] is not ""):
+                model.set(iter, 0, "<b>%s</b>" % (_("Format %(partition)s as %(format)s") % {'partition':partition.partition.path, 'format':partition.format_as}))
+        for partition in self.setup.partitions:
+            if(partition.mount_as is not None and partition.mount_as != ""):
                 # mount point
                 iter = model.append(top)
-                model.set(iter, 0, "<b>%s</b>" % (_("Mount %s as %s") % (item[0], item[3])))
-                print " Mount %s as %s" % (item[10].name, item[3])       
-
+                model.set(iter, 0, "<b>%s</b>" % (_("Mount %(partition)s as %(mountpoint)s") % {'partition':partition.partition.path, 'mountpoint':partition.mount_as}))
         self.wTree.get_widget("treeview_overview").set_model(model)
 
-    def do_install(self):
-        
+    def do_install(self):        
         try:        
             print " ## INSTALLATION "
             ''' Actually perform the installation .. '''
-            inst = self.installer
-            # Create fstab
-            files = fstab()
-            model = self.wTree.get_widget("treeview_disks").get_model()            
-            for row in model:
-                if((row[2] is not None and row[2] != "") or (row[3] is not None and row[3] != "")): # format or mountpoint specified.
-                    filesystem = row[10].type
-                    format = row[2]
-                    mountpoint = row[3]
-                    device = row[10].name
-                    files.add_mount(device=device, mountpoint=mountpoint, filesystem=filesystem, format=format)                
-            inst.fstab = files # need to add set_fstab() to InstallerEngine
+            inst = self.installer            
 
             if "--debug" in sys.argv:
                 print " ## DEBUG MODE - INSTALLATION PROCESS NOT LAUNCHED"            
                 sys.exit(0)
-
-            # set up the system user
-            username = self.wTree.get_widget("entry_username").get_text()
-            password = self.wTree.get_widget("entry_userpass1").get_text()
-            realname = self.wTree.get_widget("entry_your_name").get_text()
-            hostname = self.wTree.get_widget("entry_hostname").get_text()
-            user = SystemUser(username=username, password=password, realname=realname)
-            inst.set_main_user(user)
-            inst.set_hostname(hostname)
-
-            # set language
-            inst.set_locale(self.locale)
-
-            # set timezone
-            inst.set_timezone(self.timezone, self.timezone_code)
-
-            # set keyboard
-            inst.set_keyboard_options(layout=self.keyboard_layout, model=self.keyboard_model)
-
-            # grub?
-            do_grub = self.wTree.get_widget("checkbutton_grub").get_active()
-            if(do_grub):
-                grub_box = self.wTree.get_widget("combobox_grub")
-                grub_location = grub_box.get_model()[grub_box.get_active()][0]
-                inst.set_install_bootloader(device=grub_location)
+                                   
             inst.set_progress_hook(self.update_progress)
             inst.set_error_hook(self.error_message)
 
@@ -1204,7 +1329,7 @@ class InstallerWindow:
             self.critical_error_happened = False
             
             try:
-                inst.install()
+                inst.install(self.setup)
             except Exception, detail1:
                 print detail1
                 try:
@@ -1303,7 +1428,7 @@ class PartitionDialog:
         ''' Build supported filesystems list '''
         model = gtk.ListStore(str)        
         model.append([""])
-        if type == _("swap"):        
+        if "swap" in type:        
             model.append(["swap"])
         else:
             try:
@@ -1316,7 +1441,7 @@ class PartitionDialog:
                 print _("Could not build supported filesystems list!")
         self.dTree.get_widget("combobox_use_as").set_model(model)
         
-        if type == _("swap"):
+        if "swap" in type:
             mounts = ["", "swap"]
         else:
             mounts = ["", "/", "/boot", "/tmp", "/home", "/srv"]
@@ -1338,7 +1463,7 @@ class PartitionDialog:
                 self.dTree.get_widget("combobox_use_as").set_active(cur)
                 break
                 
-        self.dTree.get_widget("label_mount_point").set_markup(_("Mount as:"))
+        self.dTree.get_widget("label_mount_point").set_markup(_("Mount point:"))
         self.dTree.get_widget("comboboxentry_mount_point").child.set_text(mount_as)         
 
     def show(self):

@@ -1,14 +1,91 @@
-live-installer (2011.07.14~kazsid0) unstable; urgency=low
+live-installer (2011.09.07) debian; urgency=medium
 
-  * New upstream snapshot.
+  * Fix installer failing to localize firefox/thunderbird for locales which define country variants (pt_BR for instance)
 
- -- Timur Birsh <taem@linukz.org>  Thu, 14 Jul 2011 15:28:21 +0600
+ -- Clement Lefebvre <root@linuxmint.com>  Wed,  7 Sep 2011 11:12:00 +0000
 
-live-installer (2010.12.21~kazsid0) unstable; urgency=low
+live-installer (2011.09.05) debian; urgency=medium
 
-  * New upstream snapshot.
+  * Generate grub partitions in combo before showing the advanced page
 
- -- Timur Birsh <taem@linukz.org>  Tue, 21 Dec 2010 21:45:29 +0600
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  1 Sep 2011 18:18:00 +0000
+
+live-installer (2011.09.04) debian; urgency=medium
+
+  * Create a 1MiB post-MBR gap in the partition table to accomodate Grub2
+  * Align the end of the swap partition on the nearest cylinder
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  1 Sep 2011 17:18:00 +0000
+
+live-installer (2011.09.03) debian; urgency=medium
+
+  * Fixed, refresh partition table after creating it.
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  1 Sep 2011 14:55:00 +0000
+
+live-installer (2011.09.02) debian; urgency=medium
+
+  * Fixed self.column1 warning and activation of language by default
+  * Fixed partition table question dialog not working
+  * Fixed default partition setup - partition names
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  1 Sep 2011 13:18:00 +0000
+
+live-installer (2011.09.01) debian; urgency=medium
+
+  * Indentation bug fix in GTK frontend
+  * Fixed warning message about missing column called by i18n()
+
+ -- Clement Lefebvre <root@linuxmint.com>  Thu,  1 Sep 2011 12:24:00 +0000
+
+live-installer (2011.08.31) debian; urgency=medium
+
+  * If the HDD has no partition table, create a default set of partitions
+  * In /etc/fstab: Do not add partitions when their mount point is None
+  * In /etc/fstab: Non-ext filesystems now use default mount options instead of ext specific ones
+  * In /etc/fstab: Activate fsck flag for the root partition
+
+ -- Clement Lefebvre <root@linuxmint.com>  Wed,  31 Aug 2011 17:11:00 +0000
+
+live-installer (2011.08.07) debian; urgency=medium
+
+  * Allow all HDDs to be used by grub
+  * Icons added to the top label
+  * Selecting a language uses that language in the installer
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sun,  07 Aug 2011 11:41:00 +0000
+
+live-installer (2011.07.30) debian; urgency=medium
+
+  * Don't fail when a partition cannot be unmounted
+  * Don't try to unmount partitions which aren't mounted.. :)
+
+ -- Clement Lefebvre <root@linuxmint.com>  Sat,  30 Jul 2011 15:00:00 +0000
+
+live-installer (2011.07.29.1) debian; urgency=medium
+
+  * Single threaded partition builder
+  * No more slideshow
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  29 Jul 2011 15:09:00 +0000
+
+live-installer (2011.07.29) debian; urgency=medium
+
+  * Renamed launcher file
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  29 Jul 2011 10:05:00 +0000
+
+live-installer (2011.07.25) debian; urgency=medium
+
+  * Remove live-boot and live-boot-initramfs-tools
+
+ -- Clement Lefebvre <root@linuxmint.com>  Mon,  25 Jul 2011 10:37:00 +0000
+
+live-installer (2011.07.15.2) debian; urgency=medium
+
+  * Latest version
+
+ -- Clement Lefebvre <root@linuxmint.com>  Fri,  15 Jul 2011 14:42:00 +0000
 
 live-installer (2010.12.16.1) debian; urgency=medium
 

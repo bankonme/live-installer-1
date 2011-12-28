@@ -7,121 +7,22 @@ import gettext
 import stat
 import commands
 import sys
+import parted
 from configobj import ConfigObj
 
 gettext.install("live-installer", "/usr/share/locale")
-
-class SystemUser:
-    ''' Represents the main user '''
-
-    def __init__(self, username=None, realname=None, password=None):
-        ''' create new SystemUser '''
-        self.username = username
-        self.realname = realname
-        self.password = password
-
-class HostMachine:
-    ''' Used to probe information about the host '''
-
-    def is_laptop(self):
-        ''' Returns True/False as to whether the host is a laptop '''
-        ret = False
-        try:
-            p = Popen("laptop-detect", shell=True)
-            p.wait() # we want the return code
-            retcode = p.returncode
-            if(retcode == 0):
-                # its a laptop
-                ret = True
-        except:
-            pass # doesn't matter, laptop-detect doesnt exist on the host
-        return ret
-
-    def get_model(self):
-        ''' return the model of the pooter '''
-        ret = None
-        try:
-            model = commands.getoutput("dmidecode --string system-product-name")
-            ret = model.rstrip("\r\n").lstrip()
-        except:
-            pass # doesn't matter.
-        return ret
-
-    def get_manufacturer(self):
-        ''' return the system manufacturer '''
-        ret = None
-        try:
-            manu = commands.getoutput("dmidecode --string system-manufacturer")
-            ret = manu.rstrip("\r\n ").lstrip()
-        except:
-            pass # doesn't matter
-        return ret
 
 class InstallerEngine:
     ''' This is central to the live installer '''
 
     def __init__(self):
-    # set up stuffhs
         self.conf_file = '/etc/live-installer/install.conf'
         configuration = ConfigObj(self.conf_file)
-        distribution = configuration['distribution']
-        install = configuration['install']
-        self.distribution_name = distribution['DISTRIBUTION_NAME']
-        self.distribution_version = distribution['DISTRIBUTION_VERSION']
-
-        self.user = None
-        self.live_user = install['LIVE_USER_NAME']
-        self.set_install_media(media=install['LIVE_MEDIA_SOURCE'], type=install['LIVE_MEDIA_TYPE'])
-
-        self.grub_device = None
-
-    def set_main_user(self, user):
-        ''' Set the main user to be used by the installer '''
-        if(user is not None):
-            self.user = user
-
-    def get_main_user(self):
-        ''' Return the main user '''
-        return self.user
-
-    def format_device(self, device, filesystem):
-        ''' Format the given device to the specified filesystem '''
-        if filesystem == "swap":
-            cmd = "mkswap %s" % device
-        else:
-            cmd = "mkfs -t %s %s" % (filesystem, device)
-        print "EXECUTING: '%s'" % cmd
-        p = Popen(cmd, shell=True)
-        p.wait() # this blocks
-        return p.returncode
-
-    def set_install_media(self, media=None, type=None):
-        ''' Sets the location of our install source '''
-        self.media = media
-        self.media_type = type
-
-    def set_keyboard_options(self, layout=None, model=None):
-        ''' Set the required keyboard layout and model with console-setup '''
-        self.keyboard_layout = layout
-        self.keyboard_model = model
-
-    def set_hostname(self, hostname):
-        ''' Set the hostname on the target machine '''
-        self.hostname = hostname
-
-    def set_install_bootloader(self, device=None):
-        ''' The device to install grub to '''
-        self.grub_device = device
-
-    def add_to_blacklist(self, blacklistee):
-        ''' This will add a directory or file to the blacklist, so that '''
-        ''' it is not copied onto the new filesystem '''
-        try:
-            self.blacklist.index(blacklistee)
-            self.blacklist.append(blacklistee)
-        except:
-        # We haven't got this item yet
-            pass
+        self.distribution_name = configuration['distribution']['DISTRIBUTION_NAME']
+        self.distribution_version = configuration['distribution']['DISTRIBUTION_VERSION']        
+        self.live_user = configuration['install']['LIVE_USER_NAME']
+        self.media = configuration['install']['LIVE_MEDIA_SOURCE']
+        self.media_type = configuration['install']['LIVE_MEDIA_TYPE']                
 
     def set_progress_hook(self, progresshook):
         ''' Set a callback to be called on progress updates '''
@@ -138,22 +39,47 @@ class InstallerEngine:
 
     def get_distribution_version(self):
         return self.distribution_version
+        
+    def step_format_partitions(self, setup):        
+        for partition in setup.partitions:                    
+            if(partition.format_as is not None and partition.format_as != ""):                
+                # report it. should grab the total count of filesystems to be formatted ..
+                self.update_progress(total=4, current=1, pulse=True, message=_("Formatting %(partition)s as %(format)s..." % {'partition':partition.partition.path, 'format':partition.format_as}))
+                
+                #Format it
+                if partition.format_as == "swap":
+                    cmd = "mkswap %s" % partition.partition.path
+                else:
+                    cmd = "mkfs -t %s %s" % (partition.format_as, partition.partition.path)
+                print "EXECUTING: '%s'" % cmd
+                p = Popen(cmd, shell=True)
+                p.wait() # this blocks
+                partition.type = partition.format_as
+                                        
+    def step_mount_partitions(self, setup):
+        # Mount the installation media
+        print " --> Mounting partitions"
+        self.update_progress(total=4, current=2, message=_("Mounting %(partition)s on %(mountpoint)s") % {'partition':self.media, 'mountpoint':"/source/"})
+        print " ------ Mounting %s on %s" % (self.media, "/source/")
+        self.do_mount(self.media, "/source/", self.media_type, options="loop")
+        
+        # Mount the target partition
+        for partition in setup.partitions:                    
+            if(partition.mount_as is not None and partition.mount_as != ""):   
+                  if partition.mount_as == "/":
+                        self.update_progress(total=4, current=3, message=_("Mounting %(partition)s on %(mountpoint)s") % {'partition':partition.partition.path, 'mountpoint':"/target/"})
+                        print " ------ Mounting %s on %s" % (partition.partition.path, "/target/")
+                        self.do_mount(partition.partition.path, "/target", partition.type, None)
+                        break
+        
+        # Mount the other partitions        
+        for partition in setup.partitions:
+            if(partition.mount_as is not None and partition.mount_as != "" and partition.mount_as != "/" and partition.mount_as != "swap"):
+                print " ------ Mounting %s on %s" % (partition.partition.path, "/target" + partition.mount_as)
+                os.system("mkdir -p /target" + partition.mount_as)
+                self.do_mount(partition.partition.path, "/target" + partition.mount_as, partition.type, None)
 
-    def get_locale(self):
-        ''' Return the locale we're setting '''
-        return self.locale
-
-    def set_locale(self, newlocale):
-        ''' Set the locale '''
-        self.locale = newlocale
-
-    def set_timezone(self, newtimezone, newtimezone_code):
-        ''' Set the timezone '''
-        self.timezone = newtimezone
-        self.timezone_code = newtimezone_code
-
-    def install(self):
-        ''' Install this baby to disk '''
+    def install(self, setup):        
         # mount the media location.
         print " --> Installation started"
         try:
@@ -162,38 +88,14 @@ class InstallerEngine:
             if(not os.path.exists("/source")):
                 os.mkdir("/source")
             # find the squashfs..
-            root = self.media
-            root_type = self.media_type
-            if(not os.path.exists(root)):
+            if(not os.path.exists(self.media)):
                 print "Base filesystem does not exist! Critical error (exiting)."
                 sys.exit(1) # change to report
-            root_device = None
-            # format partitions as appropriate
-            for item in self.fstab.get_entries():
-                if(item.mountpoint == "/"):
-                    root_device = item                    
-                if(item.format is not None and item.format != ""):
-                    # well now, we gets to nuke stuff.
-                    # report it. should grab the total count of filesystems to be formatted ..
-                    self.update_progress(total=4, current=1, pulse=True, message=_("Formatting %s as %s..." % (item.device, item.format)))
-                    self.format_device(item.device, item.format)    
-                    item.filesystem = item.format
-                
-            # mount filesystem
-            print " --> Mounting partitions"
-            self.update_progress(total=4, current=2, message=_("Mounting %s on %s") % (root, "/source/"))
-            print " ------ Mounting %s on %s" % (root, "/source/")
-            self.do_mount(root, "/source/", root_type, options="loop")
-            self.update_progress(total=4, current=3, message=_("Mounting %s on %s") % (root_device.device, "/target/"))
-            print " ------ Mounting %s on %s" % (root_device.device, "/target/")
-            self.do_mount(root_device.device, "/target", root_device.filesystem, None)
-            for item in self.fstab.get_entries():
-                if(item.mountpoint != "/" and item.mountpoint != "swap"):
-                    print " ------ Mounting %s on %s" % (item.device, "/target" + item.mountpoint)
-                    os.system("mkdir -p /target" + item.mountpoint)
-                    self.do_mount(item.device, "/target" + item.mountpoint, item.filesystem, None)
+       
+            self.step_format_partitions(setup)
+            self.step_mount_partitions(setup)                        
             
-            # walk root filesystem. we're too lazy though :P
+            # walk root filesystem
             SOURCE = "/source/"
             DEST = "/target/"
             directory_times = []
@@ -227,7 +129,6 @@ class InstallerEngine:
                     if os.path.exists(targetpath):
                         if not os.path.isdir(targetpath):
                             os.remove(targetpath)                        
-
                     if stat.S_ISLNK(st.st_mode):
                         if os.path.lexists(targetpath):
                             os.unlink(targetpath)
@@ -250,7 +151,7 @@ class InstallerEngine:
                             os.unlink(targetpath)
                         except:
                             pass
-                        self.copy_file(sourcepath, targetpath)
+                        self.do_copy_file(sourcepath, targetpath)
                     os.lchown(targetpath, st.st_uid, st.st_gid)
                     if not stat.S_ISLNK(st.st_mode):
                         os.chmod(targetpath, mode)
@@ -304,28 +205,53 @@ class InstallerEngine:
             # make sure fstab has default /proc and /sys entries
             if(not os.path.exists("/target/etc/fstab")):
                 os.system("echo \"#### Static Filesystem Table File\" > /target/etc/fstab")
-            fstabber = open("/target/etc/fstab", "a")
-            fstabber.write("proc\t/proc\tproc\tnodev,noexec,nosuid\t0\t0\n")
-            for item in self.fstab.get_entries():
-                if(item.options is None):
-                    item.options = "rw,errors=remount-ro"
-                if(item.filesystem == "swap"):
-                    # special case..
-                    fstabber.write("%s\tswap\tswap\tsw\t0\t0\n" % item.device)
-                else:
-                    fstabber.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (item.device, item.mountpoint, item.filesystem, item.options, "0", "0"))
-            fstabber.close()
+            fstab = open("/target/etc/fstab", "a")
+            fstab.write("proc\t/proc\tproc\tdefaults\t0\t0\n")
+            for partition in setup.partitions:
+                if (partition.mount_as is not None and partition.mount_as != "None"):
+                    partition_uuid = partition.partition.path # If we can't find the UUID we use the path
+                    try:                    
+                        blkid = commands.getoutput('blkid').split('\n')
+                        for blkid_line in blkid:
+                            blkid_elements = blkid_line.split(':')
+                            if blkid_elements[0] == partition.partition.path:
+                                blkid_mini_elements = blkid_line.split()
+                                for blkid_mini_element in blkid_mini_elements:
+                                    if "UUID=" in blkid_mini_element:
+                                        partition_uuid = blkid_mini_element.replace('"', '').strip()
+                                        break
+                                break
+                    except Exception, detail:
+                        print detail
+                                        
+                    fstab.write("# %s\n" % (partition.partition.path))                            
+                    
+                    if(partition.mount_as == "/"):
+                        fstab_fsck_option = "1"
+                    else:
+                        fstab_fsck_option = "0" 
+                                            
+                    if("ext" in partition.type):
+                        fstab_mount_options = "rw,errors=remount-ro"
+                    else:
+                        fstab_mount_options = "defaults"
+                        
+                    if(partition.type == "swap"):                    
+                        fstab.write("%s\tswap\tswap\tsw\t0\t0\n" % partition_uuid)
+                    else:                                                    
+                        fstab.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (partition_uuid, partition.mount_as, partition.type, fstab_mount_options, "0", fstab_fsck_option))
+            fstab.close()
             
             # write host+hostname infos
             print " --> Writing hostname"
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Setting hostname"))
             hostnamefh = open("/target/etc/hostname", "w")
-            hostnamefh.write("%s\n" % self.hostname)
+            hostnamefh.write("%s\n" % setup.hostname)
             hostnamefh.close()
             hostsfh = open("/target/etc/hosts", "w")
             hostsfh.write("127.0.0.1\tlocalhost\n")
-            hostsfh.write("127.0.1.1\t%s\n" % self.hostname)
+            hostsfh.write("127.0.1.1\t%s\n" % setup.hostname)
             hostsfh.write("# The following lines are desirable for IPv6 capable hosts\n")
             hostsfh.write("::1     localhost ip6-localhost ip6-loopback\n")
             hostsfh.write("fe00::0 ip6-localnet\n")
@@ -344,30 +270,34 @@ class InstallerEngine:
             for line in consolefh:
                 line = line.rstrip("\r\n")
                 if(line.startswith("XKBMODEL=")):
-                    newconsolefh.write("XKBMODEL=\"%s\"\n" % self.keyboard_model)
+                    newconsolefh.write("XKBMODEL=\"%s\"\n" % setup.keyboard_model)
                 elif(line.startswith("XKBLAYOUT=")):
-                    newconsolefh.write("XKBLAYOUT=\"%s\"\n" % self.keyboard_layout)
+                    newconsolefh.write("XKBLAYOUT=\"%s\"\n" % setup.keyboard_layout)
+                elif(line.startswith("XKBVARIANT=") and setup.keyboard_variant is not None):
+                    newconsolefh.write("XKBVARIANT=\"%s\"\n" % setup.keyboard_variant)
                 else:
                     newconsolefh.write("%s\n" % line)
             consolefh.close()
             newconsolefh.close()
-            self.run_in_chroot("rm /etc/default/console-setup")
-            self.run_in_chroot("mv /etc/default/console-setup.new /etc/default/console-setup")
+            self.do_run_in_chroot("rm /etc/default/console-setup")
+            self.do_run_in_chroot("mv /etc/default/console-setup.new /etc/default/console-setup")
             
             consolefh = open("/target/etc/default/keyboard", "r")
             newconsolefh = open("/target/etc/default/keyboard.new", "w")
             for line in consolefh:
                 line = line.rstrip("\r\n")
                 if(line.startswith("XKBMODEL=")):
-                    newconsolefh.write("XKBMODEL=\"%s\"\n" % self.keyboard_model)
+                    newconsolefh.write("XKBMODEL=\"%s\"\n" % setup.keyboard_model)
                 elif(line.startswith("XKBLAYOUT=")):
-                    newconsolefh.write("XKBLAYOUT=\"%s\"\n" % self.keyboard_layout)
+                    newconsolefh.write("XKBLAYOUT=\"%s\"\n" % setup.keyboard_layout)
+                elif(line.startswith("XKBVARIANT=") and setup.keyboard_variant is not None):
+                    newconsolefh.write("XKBVARIANT=\"%s\"\n" % setup.keyboard_variant)
                 else:
                     newconsolefh.write("%s\n" % line)
             consolefh.close()
             newconsolefh.close()
-            self.run_in_chroot("rm /etc/default/keyboard")
-            self.run_in_chroot("mv /etc/default/keyboard.new /etc/default/keyboard")
+            self.do_run_in_chroot("rm /etc/default/keyboard")
+            self.do_run_in_chroot("mv /etc/default/keyboard.new /etc/default/keyboard")
 
             # add new user
             print " --> Adding new user"
@@ -395,20 +325,20 @@ class InstallerEngine:
             # write MBR (grub)
             print " --> Configuring Grub"
             our_current += 1
-            if(self.grub_device is not None):
+            if(setup.grub_device is not None):
                 self.update_progress(pulse=True, total=our_total, current=our_current, message=_("Installing bootloader"))
                 print " --> Running grub-install"
-                self.run_in_chroot("grub-install --force %s" % self.grub_device)
-                self.configure_grub(our_total, our_current)
+                self.do_run_in_chroot("grub-install --force %s" % setup.grub_device)
+                self.do_configure_grub(our_total, our_current)
                 grub_retries = 0
-                while (not self.check_grub(our_total, our_current)):
-                    self.configure_grub(our_total, our_current)
+                while (not self.do_check_grub(our_total, our_current)):
+                    self.do_configure_grub(our_total, our_current)
                     grub_retries = grub_retries + 1
                     if grub_retries >= 5:
                         self.error_message(critical=True, message=_("WARNING: The grub bootloader was not configured properly! You need to configure it manually."))
                         break
                         
-            # write MBR (grub)
+            # Clean APT
 
             # remove live-initramfs (or w/e)
             print " --> Removing live-initramfs"
@@ -423,16 +353,20 @@ class InstallerEngine:
             
             # now unmount it
             print " --> Unmounting partitions"
-            os.system("umount --force /target/dev/shm")
-            os.system("umount --force /target/dev/pts")
-            os.system("umount --force /target/dev/")
-            os.system("umount --force /target/sys/")
-            os.system("umount --force /target/proc/")
-            for item in self.fstab.get_entries():
-                if(item.mountpoint != "/" and item.mountpoint != "swap"):
-                    self.do_unmount("/target" + item.mountpoint)
-            self.do_unmount("/target")
-            self.do_unmount("/source")
+            try:
+                os.system("umount --force /target/dev/shm")
+                os.system("umount --force /target/dev/pts")
+                os.system("umount --force /target/dev/")
+                os.system("umount --force /target/sys/")
+                os.system("umount --force /target/proc/")
+                for partition in setup.partitions:
+                    if(partition.mount_as is not None and partition.mount_as != "" and partition.mount_as != "/" and partition.mount_as != "swap"):
+                        self.do_unmount("/target" + partition.mount_as)
+                self.do_unmount("/target")
+                self.do_unmount("/source")
+            except Exception, detail:
+                #best effort, no big deal if we can't umount something
+                print detail 
 
             self.update_progress(done=True, message=_("Installation finished"))
             print " --> All done"
@@ -442,20 +376,19 @@ class InstallerEngine:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
     
-    def run_in_chroot(self, command):
+    def do_run_in_chroot(self, command):
         os.system("chroot /target/ /bin/sh -c \"%s\"" % command)
         
-    def configure_grub(self, our_total, our_current):
+    def do_configure_grub(self, our_total, our_current):
         self.update_progress(pulse=True, total=our_total, current=our_current, message=_("Configuring bootloader"))
         print " --> Running grub-mkconfig"
-        self.run_in_chroot("grub-mkconfig -o /boot/grub/grub.cfg")
+        self.do_run_in_chroot("grub-mkconfig -o /boot/grub/grub.cfg")
         grub_output = commands.getoutput("chroot /target/ /bin/sh -c \"grub-mkconfig -o /boot/grub/grub.cfg\"")
         grubfh = open("/var/log/live-installer-grub-output.log", "w")
         grubfh.writelines(grub_output)
         grubfh.close()
         
-    
-    def check_grub(self, our_total, our_current):
+    def do_check_grub(self, our_total, our_current):
         self.update_progress(pulse=True, total=our_total, current=our_current, message=_("Checking bootloader"))
         print " --> Checking Grub configuration"
         time.sleep(5)
@@ -497,7 +430,7 @@ class InstallerEngine:
         p.wait()
         return p.returncode
 
-    def copy_file(self, source, dest):
+    def do_copy_file(self, source, dest):
         # TODO: Add md5 checks. BADLY needed..
         BUF_SIZE = 16 * 1024
         input = open(source, "rb")
@@ -510,40 +443,99 @@ class InstallerEngine:
         input.close()
         dst.close()
 
-class fstab(object):
-    ''' This represents the filesystem table (/etc/fstab) '''
-    def __init__(self):
-        self.mapping = dict()
+# Represents the choices made by the user
+class Setup(object):
+    language = None
+    timezone = None
+    timezone_code = None
+    keyboard_model = None    
+    keyboard_layout = None    
+    keyboard_variant = None    
+    partitions = [] #Array of PartitionSetup objects
+    username = None
+    hostname = None
+    password1 = None
+    password2 = None
+    real_name = None    
+    grub_device = None
+    disks = []
+    target_disk = None
+    
+    #Descriptions (used by the summary screen)    
+    keyboard_model_description = None
+    keyboard_layout_description = None
+    keyboard_variant_description = None
+    
+    def print_setup(self):
+        if "--debug" in sys.argv:  
+            print "-------------------------------------------------------------------------"
+            print "language: %s" % self.language
+            print "timezone: %s (%s)" % (self.timezone, self.timezone_code)        
+            print "keyboard: %s - %s (%s) - %s - %s (%s)" % (self.keyboard_model, self.keyboard_layout, self.keyboard_variant, self.keyboard_model_description, self.keyboard_layout_description, self.keyboard_variant_description)        
+            print "user: %s (%s)" % (self.username, self.real_name)
+            print "hostname: %s " % self.hostname
+            print "passwords: %s - %s" % (self.password1, self.password2)        
+            print "grub_device: %s " % self.grub_device
+            print "target_disk: %s " % self.target_disk
+            print "disks: %s " % self.disks                       
+            print "partitions:"
+            for partition in self.partitions:
+                partition.print_partition()
+            print "-------------------------------------------------------------------------"
+    
+class PartitionSetup(object):
+    name = ""    
+    type = ""
+    format_as = None
+    mount_as = None    
+    partition = None
+    aggregatedPartitions = []
 
-    def add_mount(self, device=None, mountpoint=None, filesystem=None, options=None,format=""):
-        if(not self.mapping.has_key(device)):
-            self.mapping[device] = fstab_entry(device, mountpoint, filesystem, options)
-            self.mapping[device].format = format
+    def __init__(self, partition):
+        self.partition = partition
+        self.size = partition.getSize()
+        self.start = partition.geometry.start
+        self.end = partition.geometry.end
+        self.description = ""
+        self.used_space = ""
+        self.free_space = ""
 
-    def remove_mount(self, device):
-        if(self.mapping.has_key(device)):
-            del self.mapping[device]
+        if partition.number != -1:
+            self.name = partition.path            
+            if partition.fileSystem is None:
+                # no filesystem, check flags
+                if partition.type == parted.PARTITION_SWAP:
+                    self.type = ("Linux swap")
+                elif partition.type == parted.PARTITION_RAID:
+                    self.type = ("RAID")
+                elif partition.type == parted.PARTITION_LVM:
+                    self.type = ("Linux LVM")
+                elif partition.type == parted.PARTITION_HPSERVICE:
+                    self.type = ("HP Service")
+                elif partition.type == parted.PARTITION_PALO:
+                    self.type = ("PALO")
+                elif partition.type == parted.PARTITION_PREP:
+                    self.type = ("PReP")
+                elif partition.type == parted.PARTITION_MSFT_RESERVED:
+                    self.type = ("MSFT Reserved")
+                elif partition.type == parted.PARTITION_EXTENDED:
+                    self.type = ("Extended Partition")
+                elif partition.type == parted.PARTITION_LOGICAL:
+                    self.type = ("Logical Partition")
+                elif partition.type == parted.PARTITION_FREESPACE:
+                    self.type = ("Free Space")
+                else:
+                    self.type =("Unknown")
+            else:
+                self.type = partition.fileSystem.type
+        else:
+            self.type = ""
+            self.name = _("unallocated")
 
-    def get_entries(self):
-        ''' Return our list '''
-        return self.mapping.values()
-
-    def has_device(self, device):
-        return self.mapping.has_key(device)
-
-    def has_mount(self, mountpoint):
-        for item in self.get_entries():
-            if(item.mountpoint == mountpoint):
-                return True
-        return False
-
-class fstab_entry(object):
-    ''' Represents an entry in fstab '''
-
-    def __init__(self, device, mountpoint, filesystem, options):
-        ''' Creates a new fstab entry '''
-        self.device = device
-        self.mountpoint = mountpoint
-        self.filesystem = filesystem
-        self.options = options
-        self.format = ""
+    def add_partition(self, partition):
+        self.aggregatedPartitions.append(partition)
+        self.size = self.size + partition.getSize()
+        self.end = partition.geometry.end
+    
+    def print_partition(self):
+        print "Device: %s, format as: %s, mount as: %s" % (self.partition.path, self.format_as, self.mount_as)
