@@ -146,12 +146,12 @@ class InstallerWindow:
         self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage("Choose your language", "locales.png")
         self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage("Choose your timezone", "time.png")
         self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage("Choose your keyboard layout", "keyboard.png")
-        self.wizard_pages[self.PAGE_HDD] = WizardPage("On which hard drive do you want to install Linux Mint?", "hdd.svg")
-        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage("Select where you want to install Linux Mint", "hdd.svg")
+        self.wizard_pages[self.PAGE_HDD] = WizardPage("On which hard drive do you want to install Kazsid?", "hdd.svg")
+        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage("Select where you want to install Kazsid", "hdd.svg")
         self.wizard_pages[self.PAGE_USER] = WizardPage("Please indicate your name and select a username, a password and a hostname", "user.png")
         self.wizard_pages[self.PAGE_ADVANCED] = WizardPage("Please review the following advanced options", "advanced.png")
         self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage("Please review this summary and make sure everything is correct", "summary.png")
-        self.wizard_pages[self.PAGE_INSTALL] = WizardPage("Please wait while Linux Mint is being installed on your computer", "install.png")
+        self.wizard_pages[self.PAGE_INSTALL] = WizardPage("Please wait while Kazsid is being installed on your computer", "install.png")
         
         # set the button events (wizard_cb)
         self.wTree.get_widget("button_next").connect("clicked", self.wizard_cb, False)
@@ -348,7 +348,7 @@ class InstallerWindow:
         #Installation
         self.wTree.get_widget("label_install_1").set_label(_("Please wait while the operating system is installed on your computer."))
         self.wTree.get_widget("label_install_2").set_label(_("The installation should take approximately 10 minutes."))
-        self.wTree.get_widget("label_install_3").set_label(_("We hope you enjoy this new release. Thank you for choosing Linux Mint."))    
+        self.wTree.get_widget("label_install_3").set_label(_("We hope you enjoy this new release. Thank you for choosing Kazsid."))    
         
         #Columns
         self.column1.set_title(_("Hard drive")) 
