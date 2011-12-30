@@ -188,10 +188,10 @@ class InstallerEngine:
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Setting locale"))
             os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % setup.language)
-            self.run_in_chroot("locale-gen")
+            self.do_run_in_chroot("locale-gen")
             os.system("echo \"\" > /target/etc/default/locale")
-            self.run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % setup.language)
-            self.run_in_chroot("update-locale LANG=%s.UTF-8" % setup.language)
+            self.do_run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % setup.language)
+            self.do_run_in_chroot("update-locale LANG=%s.UTF-8" % setup.language)
 
             # set the timezone
             print " --> Setting the timezone"
@@ -303,24 +303,24 @@ class InstallerEngine:
             print " --> Adding new user"
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Adding user to system"))
-            user = self.get_main_user()
-            self.run_in_chroot("useradd -s %s -c \'%s\' -G sudo,cdrom,floppy,audio,dip,video,plugdev,netdev -m %s" % ("/bin/bash", user.realname, user.username))
+            #user = self.get_main_user()
+            self.do_run_in_chroot("useradd -s %s -c \'%s\' -G sudo,cdrom,floppy,audio,dip,video,plugdev,netdev -m %s" % ("/bin/bash", setup.real_name, setup.username))
             newusers = open("/target/tmp/newusers.conf", "w")
-            newusers.write("%s:%s\n" % (user.username, user.password))
-            newusers.write("root:%s\n" % user.password)
+            newusers.write("%s:%s\n" % (setup.username, setup.password1))
+            newusers.write("root:%s\n" % setup.password1)
             newusers.close()
-            self.run_in_chroot("cat /tmp/newusers.conf | chpasswd")
-            self.run_in_chroot("rm -rf /tmp/newusers.conf")
+            self.do_run_in_chroot("cat /tmp/newusers.conf | chpasswd")
+            self.do_run_in_chroot("rm -rf /tmp/newusers.conf")
 
             # FIXME: make sure /etc/resolv.conf is a symlink
             RESOLVCONF = "/etc/resolv.conf"
             print " --> Checking %s" % RESOLVCONF
-            self.run_in_chroot("ln -s -f /etc/resolvconf/run/resolv.conf %s" % RESOLVCONF)
+            self.do_run_in_chroot("ln -s -f /etc/resolvconf/run/resolv.conf %s" % RESOLVCONF)
 
             # FIXME: generate /etc/network/interfaces (just copy it from live system)
             INTERFACES = "etc/network/interfaces"
             print " --> Preparing /%s" % INTERFACES
-            self.run_in_chroot("cp -p %s /target/%s" % (INTERFACES, INTERFACES))
+            self.do_run_in_chroot("cp -p %s /target/%s" % (INTERFACES, INTERFACES))
             
             # write MBR (grub)
             print " --> Configuring Grub"
@@ -344,7 +344,7 @@ class InstallerEngine:
             print " --> Removing live-initramfs"
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Removing live configuration (packages)"))
-            self.run_in_chroot("apt-get remove --purge --yes --force-yes live-initramfs live-installer live-boot live-boot-initramfs-tools live-config live-config-sysvinit")
+            self.do_run_in_chroot("apt-get remove --purge --yes --force-yes live-initramfs live-installer live-boot live-boot-initramfs-tools live-config live-config-sysvinit")
             
             print " --> Cleaning APT"
             our_current += 1
