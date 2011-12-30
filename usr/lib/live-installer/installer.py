@@ -187,16 +187,16 @@ class InstallerEngine:
             print " --> Setting the locale"
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Setting locale"))
-            os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % self.locale)
+            os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % setup.language)
             self.run_in_chroot("locale-gen")
             os.system("echo \"\" > /target/etc/default/locale")
-            self.run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % self.locale)
-            self.run_in_chroot("update-locale LANG=%s.UTF-8" % self.locale)
+            self.run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % setup.language)
+            self.run_in_chroot("update-locale LANG=%s.UTF-8" % setup.language)
 
             # set the timezone
             print " --> Setting the timezone"
-            os.system("echo \"%s\" > /target/etc/timezone" % self.timezone_code)
-            os.system("cp /target/usr/share/zoneinfo/%s /target/etc/localtime" % self.timezone)
+            os.system("echo \"%s\" > /target/etc/timezone" % setup.timezone_code)
+            os.system("cp /target/usr/share/zoneinfo/%s /target/etc/localtime" % setup.timezone)
             
             # write the /etc/fstab
             print " --> Writing fstab"
