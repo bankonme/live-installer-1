@@ -1008,11 +1008,11 @@ class InstallerWindow:
         self.setup.language = row[1]
         self.setup.print_setup()
         try:            
-            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=[self.setup.language])
+            self.translation = gettext.translation('live-installer', "/usr/share/locale", languages=[self.setup.language])
             self.translation.install()
         except Exception, detail:
             print "No translation found, switching back to English"
-            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=['en'])
+            self.translation = gettext.translation('live-installer', "/usr/share/locale", languages=['en'])
             self.translation.install()        
         try:
             self.i18n()
