@@ -143,15 +143,15 @@ class InstallerWindow:
         # Wizard pages
         [self.PAGE_LANGUAGE, self.PAGE_PARTITIONS, self.PAGE_USER, self.PAGE_ADVANCED, self.PAGE_KEYBOARD, self.PAGE_OVERVIEW, self.PAGE_INSTALL, self.PAGE_TIMEZONE, self.PAGE_HDD] = range(9)
         self.wizard_pages = range(9)
-        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage("Choose your language", "locales.png")
-        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage("Choose your timezone", "time.png")
-        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage("Choose your keyboard layout", "keyboard.png")
-        self.wizard_pages[self.PAGE_HDD] = WizardPage("On which hard drive do you want to install Kazsid?", "hdd.svg")
-        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage("Select where you want to install Kazsid", "hdd.svg")
-        self.wizard_pages[self.PAGE_USER] = WizardPage("Please indicate your name and select a username, a password and a hostname", "user.png")
-        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage("Please review the following advanced options", "advanced.png")
-        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage("Please review this summary and make sure everything is correct", "summary.png")
-        self.wizard_pages[self.PAGE_INSTALL] = WizardPage("Please wait while Kazsid is being installed on your computer", "install.png")
+        self.wizard_pages[self.PAGE_LANGUAGE] = WizardPage(_("Choose your language"), "locales.png")
+        self.wizard_pages[self.PAGE_TIMEZONE] = WizardPage(_("Choose your timezone"), "time.png")
+        self.wizard_pages[self.PAGE_KEYBOARD] = WizardPage(_("Choose your keyboard layout"), "keyboard.png")
+        self.wizard_pages[self.PAGE_HDD] = WizardPage(_("On which hard drive do you want to install Kazsid?"), "hdd.svg")
+        self.wizard_pages[self.PAGE_PARTITIONS] = WizardPage(_("Select where you want to install Kazsid"), "hdd.svg")
+        self.wizard_pages[self.PAGE_USER] = WizardPage(_("Please indicate your name and select a username, a password and a hostname"), "user.png")
+        self.wizard_pages[self.PAGE_ADVANCED] = WizardPage(_("Please review the following advanced options"), "advanced.png")
+        self.wizard_pages[self.PAGE_OVERVIEW] = WizardPage(_("Please review this summary and make sure everything is correct"), "summary.png")
+        self.wizard_pages[self.PAGE_INSTALL] = WizardPage(_("Please wait while Kazsid is being installed on your computer"), "install.png")
         
         # set the button events (wizard_cb)
         self.wTree.get_widget("button_next").connect("clicked", self.wizard_cb, False)
@@ -1008,11 +1008,11 @@ class InstallerWindow:
         self.setup.language = row[1]
         self.setup.print_setup()
         try:            
-            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=[self.setup.language])
+            self.translation = gettext.translation('live-installer', "/usr/share/locale", languages=[self.setup.language])
             self.translation.install()
         except Exception, detail:
             print "No translation found, switching back to English"
-            self.translation = gettext.translation('live-installer', "/usr/share/linuxmint/locale", languages=['en'])
+            self.translation = gettext.translation('live-installer', "/usr/share/locale", languages=['en'])
             self.translation.install()        
         try:
             self.i18n()
