@@ -29,7 +29,7 @@ except Exception, detail:
     print detail
 
 
-gettext.install("live-installer", "/usr/share/linuxmint/locale")
+gettext.install("live-installer", "/usr/share/locale")
 gtk.gdk.threads_init()
 
 INDEX_PARTITION_PATH=0
