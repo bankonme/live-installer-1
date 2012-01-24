@@ -4,11 +4,16 @@
 #export DH_VERBOSE=1
 
 build:
+	mkdir -p usr/share/locale/kk/LC_MESSAGES
+	mkdir -p usr/share/locale/ru/LC_MESSAGES
+	msgfmt -o usr/share/locale/kk/LC_MESSAGES/live-installer.mo po/kk.po
+	msgfmt -o usr/share/locale/ru/LC_MESSAGES/live-installer.mo po/ru.po
 
 clean:
 	dh_testdir
 	dh_testroot
 	dh_clean 
+	rm -rf usr/share/locale
 
 binary-indep: build
 	dh_testdir

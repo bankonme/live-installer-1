@@ -1,0 +1,453 @@
+# Kazakh translation for linuxmint
+# Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
+# This file is distributed under the same license as the linuxmint package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2010.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: linuxmint\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2012-01-10 11:10+0600\n"
+"PO-Revision-Date: 2012-01-16 16:55+0600\n"
+"Last-Translator: Baurzhan Muftakhidinov <baurthefirst@gmail.com>\n"
+"Language-Team: Kazakh <kk@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2012-01-05 03:56+0000\n"
+"X-Generator: Launchpad (build 14625)\n"
+
+#: usr/lib/live-installer/installer.py:47
+#, python-format
+msgid "Formatting %(partition)s as %(format)s..."
+msgstr "%(partition)s диск бөлімін %(format)s ретінде пішімдеу..."
+
+#: usr/lib/live-installer/installer.py:62
+#: usr/lib/live-installer/installer.py:70
+#, python-format
+msgid "Mounting %(partition)s on %(mountpoint)s"
+msgstr "%(partition)s диск бөлімін %(mountpoint)s жеріне тіркеу"
+
+#: usr/lib/live-installer/installer.py:109
+msgid "Indexing files to be copied.."
+msgstr "Көшірілетін файлдарды индекстеу.."
+
+#: usr/lib/live-installer/installer.py:127
+#, python-format
+msgid "Copying %s"
+msgstr "%s көшіру"
+
+#: usr/lib/live-installer/installer.py:169
+#, python-format
+msgid "Restoring meta-information on %s"
+msgstr "%s үшін мета-ақпаратты бұрынғы қалпына келтіру"
+
+#: usr/lib/live-installer/installer.py:179
+msgid "Entering new system.."
+msgstr "Жаңа жүйеге кіру.."
+
+#: usr/lib/live-installer/installer.py:189
+msgid "Setting locale"
+msgstr "Локальді орнату"
+
+#: usr/lib/live-installer/installer.py:204
+msgid "Writing filesystem mount information"
+msgstr "Файлдық жүйелердің тіркелу нүктелер ақпаратын жазу"
+
+#: usr/lib/live-installer/installer.py:248
+msgid "Setting hostname"
+msgstr "Хост атын орнату"
+
+#: usr/lib/live-installer/installer.py:267
+msgid "Setting keyboard options"
+msgstr "Пернетақта баптауларын орнату"
+
+#: usr/lib/live-installer/installer.py:305
+msgid "Adding user to system"
+msgstr "Жүйеге пайдаланушыны қосу"
+
+#: usr/lib/live-installer/installer.py:329
+msgid "Installing bootloader"
+msgstr "Жүктеуші орнатылуда"
+
+#: usr/lib/live-installer/installer.py:338
+msgid "WARNING: The grub bootloader was not configured properly! You need to configure it manually."
+msgstr "НАЗАР АУДАРЫҢЫЗ: grub жүктеушісі дұрыс бапталмады! Сізге оны қолмен баптау керек."
+
+#: usr/lib/live-installer/installer.py:346
+msgid "Removing live configuration (packages)"
+msgstr "Тірі жүйенің баптауларын (бағдарламалар) өшіру"
+
+#: usr/lib/live-installer/installer.py:351
+msgid "Cleaning APT"
+msgstr "APT тазарту"
+
+#: usr/lib/live-installer/installer.py:371
+#: usr/lib/live-installer/frontend/gtk_interface.py:1352
+msgid "Installation finished"
+msgstr "Орнату аяқталды"
+
+#: usr/lib/live-installer/installer.py:383
+msgid "Configuring bootloader"
+msgstr "Жүктеушіні баптау"
+
+#: usr/lib/live-installer/installer.py:392
+msgid "Checking bootloader"
+msgstr "Жүктеушіні тексеру"
+
+#: usr/lib/live-installer/installer.py:533
+msgid "unallocated"
+msgstr "бөлінбеген"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:138
+#: usr/lib/live-installer/frontend/gtk_interface.py:140
+#, python-format
+msgid "%s Installer"
+msgstr "%s орнату бағдарламасы"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:146
+msgid "Choose your language"
+msgstr "Өз тіліңізді таңдаңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:147
+msgid "Choose your timezone"
+msgstr "Уақыт белдеуін таңдаңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:148
+msgid "Choose your keyboard layout"
+msgstr "Пернетақта жаймасын таңдаңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:149
+msgid "On which hard drive do you want to install Kazsid?"
+msgstr "Kazsid-тың қай қатты дискіге орнатылуын қалайсыз?"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:150
+msgid "Select where you want to install Kazsid"
+msgstr "Kazsid-тың қайда орнатылатынын көрсетіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:151
+msgid "Please indicate your name and select a username, a password and a hostname"
+msgstr "Өз атыңызды және пайдаланушы атыңызды, парольді және хост атын көрсетіңіз."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:152
+msgid "Please review the following advanced options"
+msgstr "Келесі кеңейтілген опцияларды тексеріңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:153
+msgid "Please review this summary and make sure everything is correct"
+msgstr "Жинақты түрде көрсетілген баптауларды тексеріңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:154
+msgid "Please wait while Kazsid is being installed on your computer"
+msgstr "Kazsid компьютеріңізге орнатылғанша күте тұрыңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:195
+msgid "Edit partitions"
+msgstr "Диск бөлімдерін түзету"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:202
+#: usr/lib/live-installer/frontend/gtk_interface.py:356
+msgid "Device"
+msgstr "Құрылғы"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:207
+#: usr/lib/live-installer/frontend/gtk_interface.py:357
+msgid "Type"
+msgstr "Түрі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:212
+#: usr/lib/live-installer/frontend/gtk_interface.py:358
+msgid "Operating system"
+msgstr "Операциялық жүйесі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:217
+#: usr/lib/live-installer/frontend/gtk_interface.py:359
+msgid "Mount point"
+msgstr "Тіркелу нүктесі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:222
+#: usr/lib/live-installer/frontend/gtk_interface.py:360
+msgid "Format?"
+msgstr "Пішімдеу керек пе?"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:227
+#: usr/lib/live-installer/frontend/gtk_interface.py:361
+msgid "Size"
+msgstr "Өлшемі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:232
+#: usr/lib/live-installer/frontend/gtk_interface.py:362
+msgid "Free space"
+msgstr "Бос орын"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:262
+#: usr/lib/live-installer/frontend/gtk_interface.py:363
+msgid "Layout"
+msgstr "Жайма"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:268
+#: usr/lib/live-installer/frontend/gtk_interface.py:364
+msgid "Variant"
+msgstr "Нұсқасы"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:277
+#: usr/lib/live-installer/frontend/gtk_interface.py:365
+msgid "Overview"
+msgstr "Қарап шығу"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:281
+msgid "Calculating file indexes..."
+msgstr "Файлдар индекстерін есептеу..."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:330
+msgid "Your full name"
+msgstr "Сіздің толық атыңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:331
+msgid "This will be shown in the About Me application"
+msgstr "Бұл өзім туралы (About Me) бағдарламасында көрсетілетін болады"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:332
+msgid "Your username"
+msgstr "Сіздің пайдаланушы атыңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:333
+msgid "This is the name you will use to login to your computer"
+msgstr "Жүейге кіру үшін қолданылатын атыңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:334
+msgid "Your password"
+msgstr "Сіздің пароліңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:335
+msgid "Please enter your password twice to ensure it is correct"
+msgstr "Парольдің дұрыстығына көз жеткізу үшін оны екі рет енгізіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:336
+msgid "Hostname"
+msgstr "Хост аты"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:337
+msgid "This hostname will be the computers name on the network"
+msgstr "Бұл хост аты осы компьютердің желідегі аты болады"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:340
+msgid "Bootloader"
+msgstr "Жүктеуші"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:341
+msgid "Install GRUB"
+msgstr "GRUB орнату"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:342
+msgid "GRUB is a bootloader used to load the Linux kernel"
+msgstr "GRUB - Linux ядросын жүктеу үшін қолданылатын жүктеуші"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:345
+msgid "Use this box to test your keyboard layout"
+msgstr "Таңдалған пернетақта тіліңізді осы өрісте тексере аласыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:346
+msgid "Model"
+msgstr "Түрі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:349
+msgid "Please wait while the operating system is installed on your computer."
+msgstr "Операциялық жүйе компьютеріңізге орнатылғанша күте тұрыңыз."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:350
+msgid "The installation should take approximately 10 minutes."
+msgstr "Орнату үрдісі шамамен 10 минуттай уақытты алады."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:351
+msgid "We hope you enjoy this new release. Thank you for choosing Kazsid."
+msgstr "Бұл шығарылым сізге пайдалы болады деп үміттенеміз. Kazsid-ты таңдағаныңыз үшін рахмет."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:354
+msgid "Hard drive"
+msgstr "Қатты диск"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:355
+msgid "Description"
+msgstr "Сипаттамасы"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:408
+msgid "Edit"
+msgstr "Түзету"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:413
+msgid "Assign to /"
+msgstr "/ ретінде меншіктеу"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:416
+msgid "Assign to /home"
+msgstr "/home ретінде меншіктеу"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:658
+#: usr/lib/live-installer/frontend/gtk_interface.py:1196
+#: usr/lib/live-installer/frontend/gtk_interface.py:1238
+msgid "Installation Tool"
+msgstr "Орнатушы сайманы"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:658
+msgid "No partition table was found on the hard drive. Do you want the installer to create a set of partitions for you? Note: This will erase any data present on the disk."
+msgstr "Қатты дискіде бөлімдер кестесі табылмады. Орнату бағдарламасы сіз үшін бөлімдер жиынын жасауды қалайсыз ба? Ескерту: Бұл әрекет дискідегі бар мәліметті өшіреді."
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:791
+msgid "Extended"
+msgstr "Кеңейтілген"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1121
+msgid "Passwords do not match"
+msgstr "Парольдер өзара сәйкес келмейді"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1124
+msgid "Passwords match"
+msgstr "Парольдер өзара сәйкес келеді"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1136
+msgid "Forward"
+msgstr "Алға"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1188
+msgid "Please select a root (/) partition before proceeding"
+msgstr "Әрі қарай жалғастырар алдында түбір (/) бөлімін таңдаңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1194
+msgid "Please indicate a filesystem to format the root (/) partition before proceeding"
+msgstr "Жалғастырар алдында түбірлік (/) бөлімін пішімдеу үшін файлдық жүйені таңдаңыз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1205
+msgid "Please provide your full name"
+msgstr "Өзіңіздің толық атыңызды көрсетіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1208
+msgid "Please provide a username"
+msgstr "Пайдаланушы атын енгізіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1211
+msgid "Please provide a password for your user account"
+msgstr "Өз тіркелгіңіз үшін парольді енгізіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1214
+msgid "Your passwords do not match"
+msgstr "Парольдеріңіз өзара сәйкес келмейді"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1217
+msgid "Please provide a hostname"
+msgstr "Хост атын енгізіңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1222
+msgid "Your username must be lower case"
+msgstr "Пайдаланушы атыңыз кіші әріптермен жазылуы тиіс"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1226
+msgid "Your username may not contain whitespace"
+msgstr "Пайдаланушы атының құрамында бос орынға (пробел) рұқсат етілмейді"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1231
+msgid "Your hostname must be lower case"
+msgstr "Хост аты кіші әріптермен жазылуы тиіс"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1235
+msgid "Your hostname may not contain whitespace"
+msgstr "Хост атында бос орындар (пробел) болмауы тиіс"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1246
+msgid "Install"
+msgstr "Орнату"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1276
+msgid "Localization"
+msgstr "Аудармалар"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1278
+msgid "Language: "
+msgstr "Тіл: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1280
+msgid "Timezone: "
+msgstr "Уақыт белдеуі: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1283
+#: usr/lib/live-installer/frontend/gtk_interface.py:1285
+msgid "Keyboard layout: "
+msgstr "Пернетақта жаймасы: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1287
+msgid "User settings"
+msgstr "Пайдаланушы баптаулары"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1289
+msgid "Real name: "
+msgstr "Шын аты: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1291
+msgid "Username: "
+msgstr "Пайдаланушы аты: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1293
+msgid "System settings"
+msgstr "Жүйелік баптаулар"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1295
+msgid "Hostname: "
+msgstr "Хост аты: "
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1298
+#, python-format
+msgid "Install bootloader in %s"
+msgstr "%s ішіне жүктеушіні орнату"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1300
+msgid "Do not install bootloader"
+msgstr "Жүктеушіні орнатпау"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1302
+msgid "Filesystem operations"
+msgstr "Файлдық жүйе әрекеттері"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1307
+#, python-format
+msgid "Format %(partition)s as %(format)s"
+msgstr "%(partition)s диск бөлімін %(format)s ретінде пішімдеу"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1312
+#, python-format
+msgid "Mount %(partition)s as %(mountpoint)s"
+msgstr "%(partition)s диск бөлімін %(mountpoint)s ретінде тіркеу"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1337
+#: usr/lib/live-installer/frontend/gtk_interface.py:1348
+msgid "Installation error"
+msgstr "Орнату қатесі"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1352
+msgid "Installation is now complete. Please restart your computer to use the new system"
+msgstr "Орнату аяқталды. Жаңа жүйемен жұмысты бастау үшін, компьютеріңізді қайта жүктеңіз"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1426
+msgid "Edit partition"
+msgstr "Бөлімді түзету"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1441
+msgid "Could not build supported filesystems list!"
+msgstr "Қолдауы бар файлдық жүйелер тізімін жасау мүмкін емес!"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1454
+msgid "Device:"
+msgstr "Құрылғы:"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1457
+msgid "Format as:"
+msgstr "Қалайша пішімдеу:"
+
+#: usr/lib/live-installer/frontend/gtk_interface.py:1466
+msgid "Mount point:"
+msgstr "Тіркеу нүктесі:"
+
+#~ msgid "Removing live configuration (user)"
+#~ msgstr "Тірі жүйенің баптауларын (пайдаланушы) өшіру"
+
+#~ msgid "Localizing Firefox and Thunderbird"
+#~ msgstr "Firefox пен Thunderbird локализациялау"
