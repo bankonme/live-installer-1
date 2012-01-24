@@ -1,3 +1,9 @@
+live-installer (2012.01.24~kazsid0) debian; urgency=low
+
+  * New upstream snapshot.
+
+ -- Timur Birsh <taem@linukz.org>  Tue, 24 Jan 2012 14:43:47 +0600
+
 live-installer (2011.12.30~kazsid0) debian; urgency=low
 
   * New upstream snapshot.
