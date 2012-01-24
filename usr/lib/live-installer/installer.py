@@ -187,7 +187,10 @@ class InstallerEngine:
             print " --> Setting the locale"
             our_current += 1
             self.update_progress(total=our_total, current=our_current, message=_("Setting locale"))
-            os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % setup.language)
+            #os.system("echo \"%s.UTF-8 UTF-8\" >> /target/etc/locale.gen" % setup.language)
+            os.system("echo \"kk_KZ..UTF-8 UTF-8\" >> /target/etc/locale.gen")
+            os.system("echo \"ru_RU..UTF-8 UTF-8\" >> /target/etc/locale.gen")
+            os.system("echo \"en_US..UTF-8 UTF-8\" >> /target/etc/locale.gen")
             self.do_run_in_chroot("locale-gen")
             os.system("echo \"\" > /target/etc/default/locale")
             self.do_run_in_chroot("update-locale LANG=\"%s.UTF-8\"" % setup.language)
