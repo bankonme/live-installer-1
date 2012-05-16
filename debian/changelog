@@ -1,14 +1,15 @@
+live-installer (2012.05.16~kazsid0) debian; urgency=low
+
+  * New upstream snapshot.
+
+ -- Timur Birsh <taem@linukz.org>  Wed, 16 May 2012 15:16:42 +0600
+
 live-installer (2012.04.20.1) debian; urgency=low
 
   * Replaced GDM config with MDM config
   * Fixed formatting issues for JFS, XFS, BTRFS and a couple of other filesystems
 
  -- Clement Lefebvre <clem@mint>  Fri, 20 Apr 2012 10:20:38 +0100
-
-
-  * New upstream snapshot.
-
- -- Timur Birsh <taem@linukz.org>  Tue, 24 Jan 2012 14:43:47 +0600
 
 live-installer (2011.12.30~kazsid0) debian; urgency=low
 
