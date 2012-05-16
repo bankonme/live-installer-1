@@ -52,6 +52,8 @@ class InstallerEngine:
                 else:
                     if (partition.format_as == "jfs"):
                         cmd = "mkfs.%s -q %s" % (partition.format_as, partition.partition.path)
+                    elif (partition.format_as == "reiserfs"):
+                        cmd = "mkfs.%s -q %s" % (partition.format_as, partition.partition.path)
                     elif (partition.format_as == "xfs"):
                         cmd = "mkfs.%s -f %s" % (partition.format_as, partition.partition.path)
                     else:
