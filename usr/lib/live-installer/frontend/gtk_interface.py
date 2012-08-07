@@ -1173,7 +1173,7 @@ class InstallerWindow:
                 #        break
                 #    iter = model.iter_next(iter)
                 #self.activate_page(self.PAGE_KEYBOARD)
-            elif(sel == self.PAGE_KEYBOARD):
+            #elif(sel == self.PAGE_KEYBOARD):
                 if len(self.setup.disks) > 1:
                     self.activate_page(self.PAGE_HDD)                
                 else:
