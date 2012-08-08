@@ -68,7 +68,7 @@ msgstr "Жүйеге пайдаланушыны қосу"
 
 #: usr/lib/live-installer/installer.py:329
 msgid "Installing bootloader"
-msgstr "Жүктеуші орнатылуда"
+msgstr "Жүктеушіні орнату"
 
 #: usr/lib/live-installer/installer.py:338
 msgid "WARNING: The grub bootloader was not configured properly! You need to configure it manually."
@@ -111,7 +111,7 @@ msgstr "Өз тіліңізді таңдаңыз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:147
 msgid "Choose your timezone"
-msgstr "Уақыт белдеуін таңдаңыз"
+msgstr "Уақыт белдеуіңізді таңдаңыз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:148
 msgid "Choose your keyboard layout"
@@ -135,7 +135,7 @@ msgstr "Келесі кеңейтілген опцияларды тексері�
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:153
 msgid "Please review this summary and make sure everything is correct"
-msgstr "Жинақты түрде көрсетілген баптауларды тексеріңіз"
+msgstr "Жинақы түрде көрсетілген баптауларды тексеріңіз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:154
 msgid "Please wait while Kazsid is being installed on your computer"
@@ -213,7 +213,7 @@ msgstr "Сіздің пайдаланушы атыңыз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:333
 msgid "This is the name you will use to login to your computer"
-msgstr "Жүейге кіру үшін қолданылатын атыңыз"
+msgstr "Жүйеге кіру үшін қолданылатын атыңыз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:334
 msgid "Your password"
@@ -245,7 +245,7 @@ msgstr "GRUB - Linux ядросын жүктеу үшін қолданылаты
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:345
 msgid "Use this box to test your keyboard layout"
-msgstr "Таңдалған пернетақта тіліңізді осы өрісте тексере аласыз"
+msgstr "Таңдалған пернетақта жаймасын осы өрісте тексере аласыз"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:346
 msgid "Model"
@@ -253,7 +253,7 @@ msgstr "Түрі"
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:349
 msgid "Please wait while the operating system is installed on your computer."
-msgstr "Операциялық жүйе компьютеріңізге орнатылғанша күте тұрыңыз."
+msgstr "Операциялық жүйе компьютеріңізге орнатылғанша дейін күте тұрыңыз."
 
 #: usr/lib/live-installer/frontend/gtk_interface.py:350
 msgid "The installation should take approximately 10 minutes."

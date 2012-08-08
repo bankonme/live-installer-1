@@ -270,7 +270,7 @@ class InstallerWindow:
         self.wTree.get_widget("treeview_variants").append_column(self.column11)
         self.wTree.get_widget("treeview_variants").connect("cursor-changed", self.assign_keyboard_variant)
         
-        self.build_kb_lists()
+        #self.build_kb_lists()
 
         # 'about to install' aka overview
         ren = gtk.CellRendererText()
@@ -1160,20 +1160,20 @@ class InstallerWindow:
                     country_code = self.setup.language.split("_")[1]
                 else:
                     country_code = self.setup.language
-                treeview = self.wTree.get_widget("treeview_layouts")
-                model = treeview.get_model()
-                iter = model.get_iter_first()                
-                while iter is not None:
-                    iter_country_code = model.get_value(iter, 1)
-                    if iter_country_code.lower() == country_code.lower():
-                        column = treeview.get_column(0)
-                        path = model.get_path(iter)
-                        treeview.set_cursor(path, focus_column=column)
-                        treeview.scroll_to_cell(path, column=column)
-                        break
-                    iter = model.iter_next(iter)
-                self.activate_page(self.PAGE_KEYBOARD)
-            elif(sel == self.PAGE_KEYBOARD):
+                #treeview = self.wTree.get_widget("treeview_layouts")
+                #model = treeview.get_model()
+                #iter = model.get_iter_first()                
+                #while iter is not None:
+                #    iter_country_code = model.get_value(iter, 1)
+                #    if iter_country_code.lower() == country_code.lower():
+                #        column = treeview.get_column(0)
+                #        path = model.get_path(iter)
+                #        treeview.set_cursor(path, focus_column=column)
+                #        treeview.scroll_to_cell(path, column=column)
+                #        break
+                #    iter = model.iter_next(iter)
+                #self.activate_page(self.PAGE_KEYBOARD)
+            #elif(sel == self.PAGE_KEYBOARD):
                 if len(self.setup.disks) > 1:
                     self.activate_page(self.PAGE_HDD)                
                 else:
@@ -1262,8 +1262,8 @@ class InstallerWindow:
             elif(sel == self.PAGE_PARTITIONS):
                 self.activate_page(self.PAGE_HDD)
             elif(sel == self.PAGE_HDD):
-                self.activate_page(self.PAGE_KEYBOARD)
-            elif(sel == self.PAGE_KEYBOARD):
+            #    self.activate_page(self.PAGE_KEYBOARD)
+            #elif(sel == self.PAGE_KEYBOARD):
                 self.activate_page(self.PAGE_TIMEZONE)
             elif(sel == self.PAGE_TIMEZONE):
                 self.activate_page(self.PAGE_LANGUAGE)
